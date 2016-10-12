@@ -44,6 +44,7 @@ type StateDB struct {
 	thash, bhash common.Hash
 	txIndex      int
 	logs         map[common.Hash]Logs
+	logSize      uint
 }
 
 // Create a new state from a given trie
@@ -66,7 +67,9 @@ func (self *StateDB) AddLog(log *Log) {
 	log.TxHash = self.thash
 	log.BlockHash = self.bhash
 	log.TxIndex = uint(self.txIndex)
+	log.Index = self.logSize
 	self.logs[self.thash] = append(self.logs[self.thash], log)
+	self.logSize++
 }
 
 func (self *StateDB) GetLogs(hash common.Hash) Logs {
@@ -200,18 +203,20 @@ func (self *StateDB) UpdateStateObject(stateObject *StateObject) {
 
 // Delete the given state object and delete it from the state trie
 func (self *StateDB) DeleteStateObject(stateObject *StateObject) {
+	stateObject.deleted = true
+
 	addr := stateObject.Address()
 	self.trie.Delete(addr[:])
-
-	//delete(self.stateObjects, addr.Str())
 }
 
 // Retrieve a state object given my the address. Nil if not found
-func (self *StateDB) GetStateObject(addr common.Address) *StateObject {
-	//addr = common.Address(addr)
-
-	stateObject := self.stateObjects[addr.Str()]
+func (self *StateDB) GetStateObject(addr common.Address) (stateObject *StateObject) {
+	stateObject = self.stateObjects[addr.Str()]
 	if stateObject != nil {
+		if stateObject.deleted {
+			stateObject = nil
+		}
+
 		return stateObject
 	}
 
@@ -233,7 +238,7 @@ func (self *StateDB) SetStateObject(object *StateObject) {
 // Retrieve a state object or create a new state object if nil
 func (self *StateDB) GetOrNewStateObject(addr common.Address) *StateObject {
 	stateObject := self.GetStateObject(addr)
-	if stateObject == nil {
+	if stateObject == nil || stateObject.deleted {
 		stateObject = self.CreateAccount(addr)
 	}
 
@@ -288,6 +293,7 @@ func (self *StateDB) Copy() *StateDB {
 		state.logs[hash] = make(Logs, len(logs))
 		copy(state.logs[hash], logs)
 	}
+	state.logSize = self.logSize
 
 	return state
 }
@@ -298,6 +304,7 @@ func (self *StateDB) Set(state *StateDB) {
 
 	self.refund = state.refund
 	self.logs = state.logs
+	self.logSize = state.logSize
 }
 
 func (s *StateDB) Root() common.Hash {
