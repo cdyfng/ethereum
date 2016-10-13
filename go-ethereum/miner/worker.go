@@ -17,6 +17,7 @@
 package miner
 
 import (
+	"bytes"
 	"fmt"
 	"math/big"
 	"sync"
@@ -33,6 +34,7 @@ import (
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/logger"
 	"github.com/ethereum/go-ethereum/logger/glog"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/pow"
 	"gopkg.in/fatih/set.v0"
 )
@@ -94,10 +96,13 @@ type worker struct {
 
 	mu sync.Mutex
 
+	// update loop
+	mux    *event.TypeMux
+	events event.Subscription
+	wg     sync.WaitGroup
+
 	agents map[Agent]struct{}
 	recv   chan *Result
-	mux    *event.TypeMux
-	quit   chan struct{}
 	pow    pow.PoW
 
 	eth     core.Backend
@@ -138,13 +143,13 @@ func newWorker(config *core.ChainConfig, coinbase common.Address, eth core.Backe
 		possibleUncles: make(map[common.Hash]*types.Block),
 		coinbase:       coinbase,
 		txQueue:        make(map[common.Hash]*types.Transaction),
-		quit:           make(chan struct{}),
 		agents:         make(map[Agent]struct{}),
 		fullValidation: false,
 	}
+	worker.events = worker.mux.Subscribe(core.ChainHeadEvent{}, core.ChainSideEvent{}, core.TxPreEvent{})
 	go worker.update()
-	go worker.wait()
 
+	go worker.wait()
 	worker.commitNewWork()
 
 	return worker
@@ -168,7 +173,7 @@ func (self *worker) pending() (*types.Block, *state.StateDB) {
 			self.current.receipts,
 		), self.current.state
 	}
-	return self.current.Block, self.current.state
+	return self.current.Block, self.current.state.Copy()
 }
 
 func (self *worker) start() {
@@ -184,9 +189,10 @@ func (self *worker) start() {
 }
 
 func (self *worker) stop() {
+	self.wg.Wait()
+
 	self.mu.Lock()
 	defer self.mu.Unlock()
-
 	if atomic.LoadInt32(&self.mining) == 1 {
 		// Stop all agents.
 		for agent := range self.agents {
@@ -217,36 +223,22 @@ func (self *worker) unregister(agent Agent) {
 }
 
 func (self *worker) update() {
-	eventSub := self.mux.Subscribe(core.ChainHeadEvent{}, core.ChainSideEvent{}, core.TxPreEvent{})
-	defer eventSub.Unsubscribe()
-
-	eventCh := eventSub.Chan()
-	for {
-		select {
-		case event, ok := <-eventCh:
-			if !ok {
-				// Event subscription closed, set the channel to nil to stop spinning
-				eventCh = nil
-				continue
+	for event := range self.events.Chan() {
+		// A real event arrived, process interesting content
+		switch ev := event.Data.(type) {
+		case core.ChainHeadEvent:
+			self.commitNewWork()
+		case core.ChainSideEvent:
+			self.uncleMu.Lock()
+			self.possibleUncles[ev.Block.Hash()] = ev.Block
+			self.uncleMu.Unlock()
+		case core.TxPreEvent:
+			// Apply transaction to the pending state if we're not mining
+			if atomic.LoadInt32(&self.mining) == 0 {
+				self.currentMu.Lock()
+				self.current.commitTransactions(self.mux, types.Transactions{ev.Tx}, self.gasPrice, self.chain)
+				self.currentMu.Unlock()
 			}
-			// A real event arrived, process interesting content
-			switch ev := event.Data.(type) {
-			case core.ChainHeadEvent:
-				self.commitNewWork()
-			case core.ChainSideEvent:
-				self.uncleMu.Lock()
-				self.possibleUncles[ev.Block.Hash()] = ev.Block
-				self.uncleMu.Unlock()
-			case core.TxPreEvent:
-				// Apply transaction to the pending state if we're not mining
-				if atomic.LoadInt32(&self.mining) == 0 {
-					self.currentMu.Lock()
-					self.current.commitTransactions(self.mux, types.Transactions{ev.Tx}, self.gasPrice, self.chain)
-					self.currentMu.Unlock()
-				}
-			}
-		case <-self.quit:
-			return
 		}
 	}
 }
@@ -366,7 +358,7 @@ func (self *worker) push(work *Work) {
 
 // makeCurrent creates a new environment for the current cycle.
 func (self *worker) makeCurrent(parent *types.Block, header *types.Header) error {
-	state, err := state.New(parent.Root(), self.eth.ChainDb())
+	state, err := self.chain.StateAt(parent.Root())
 	if err != nil {
 		return err
 	}
@@ -478,7 +470,19 @@ func (self *worker) commitNewWork() {
 		Extra:      self.extra,
 		Time:       big.NewInt(tstamp),
 	}
-
+	// If we are care about TheDAO hard-fork check whether to override the extra-data or not
+	if daoBlock := self.config.DAOForkBlock; daoBlock != nil {
+		// Check whether the block is among the fork extra-override range
+		limit := new(big.Int).Add(daoBlock, params.DAOForkExtraRange)
+		if header.Number.Cmp(daoBlock) >= 0 && header.Number.Cmp(limit) < 0 {
+			// Depending whether we support or oppose the fork, override differently
+			if self.config.DAOForkSupport {
+				header.Extra = common.CopyBytes(params.DAOForkBlockExtra)
+			} else if bytes.Compare(header.Extra, params.DAOForkBlockExtra) == 0 {
+				header.Extra = []byte{} // If miner opposes, don't let it use the reserved extra-data
+			}
+		}
+	}
 	previous := self.current
 	// Could potentially happen if starting to mine in an odd state.
 	err := self.makeCurrent(parent, header)
@@ -486,7 +490,11 @@ func (self *worker) commitNewWork() {
 		glog.V(logger.Info).Infoln("Could not create new env for mining, retrying on next block.")
 		return
 	}
+	// Create the current work task and check any fork transitions needed
 	work := self.current
+	if self.config.DAOForkSupport && self.config.DAOForkBlock != nil && self.config.DAOForkBlock.Cmp(header.Number) == 0 {
+		core.ApplyDAOHardFork(work.state)
+	}
 
 	/* //approach 1
 	transactions := self.eth.TxPool().GetTransactions()
@@ -657,7 +665,7 @@ func (env *Work) commitTransactions(mux *event.TypeMux, transactions types.Trans
 }
 
 func (env *Work) commitTransaction(tx *types.Transaction, bc *core.BlockChain, gp *core.GasPool) (error, vm.Logs) {
-	snap := env.state.Copy()
+	snap := env.state.Snapshot()
 
 	// this is a bit of a hack to force jit for the miners
 	config := env.config.VmConfig
@@ -668,7 +676,7 @@ func (env *Work) commitTransaction(tx *types.Transaction, bc *core.BlockChain, g
 
 	receipt, logs, _, err := core.ApplyTransaction(env.config, bc, gp, env.state, env.header, tx, env.header.GasUsed, config)
 	if err != nil {
-		env.state.Set(snap)
+		env.state.RevertToSnapshot(snap)
 		return err, nil
 	}
 	env.txs = append(env.txs, tx)

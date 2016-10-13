@@ -95,10 +95,11 @@ type BlockChain struct {
 	currentBlock     *types.Block // Current head of the block chain
 	currentFastBlock *types.Block // Current head of the fast-sync chain (may be above the block chain!)
 
-	bodyCache    *lru.Cache // Cache for the most recent block bodies
-	bodyRLPCache *lru.Cache // Cache for the most recent block bodies in RLP encoded format
-	blockCache   *lru.Cache // Cache for the most recent entire blocks
-	futureBlocks *lru.Cache // future blocks are blocks added for later processing
+	stateCache   *state.StateDB // State database to reuse between imports (contains state cache)
+	bodyCache    *lru.Cache     // Cache for the most recent block bodies
+	bodyRLPCache *lru.Cache     // Cache for the most recent block bodies in RLP encoded format
+	blockCache   *lru.Cache     // Cache for the most recent entire blocks
+	futureBlocks *lru.Cache     // future blocks are blocks added for later processing
 
 	quit    chan struct{} // blockchain quit channel
 	running int32         // running must be called atomically
@@ -198,11 +199,18 @@ func (self *BlockChain) loadLastState() error {
 			self.currentFastBlock = block
 		}
 	}
+	// Initialize a statedb cache to ensure singleton account bloom filter generation
+	statedb, err := state.New(self.currentBlock.Root(), self.chainDb)
+	if err != nil {
+		return err
+	}
+	self.stateCache = statedb
+	self.stateCache.GetAccount(common.Address{})
+
 	// Issue a status log and return
 	headerTd := self.GetTd(self.hc.CurrentHeader().Hash())
 	blockTd := self.GetTd(self.currentBlock.Hash())
 	fastTd := self.GetTd(self.currentFastBlock.Hash())
-
 	glog.V(logger.Info).Infof("Last header: #%d [%x…] TD=%v", self.hc.CurrentHeader().Number, self.hc.CurrentHeader().Hash().Bytes()[:4], headerTd)
 	glog.V(logger.Info).Infof("Last block: #%d [%x…] TD=%v", self.currentBlock.Number(), self.currentBlock.Hash().Bytes()[:4], blockTd)
 	glog.V(logger.Info).Infof("Fast block: #%d [%x…] TD=%v", self.currentFastBlock.Number(), self.currentFastBlock.Hash().Bytes()[:4], fastTd)
@@ -349,7 +357,12 @@ func (self *BlockChain) AuxValidator() pow.PoW { return self.pow }
 
 // State returns a new mutable state based on the current HEAD block.
 func (self *BlockChain) State() (*state.StateDB, error) {
-	return state.New(self.CurrentBlock().Root(), self.chainDb)
+	return self.StateAt(self.CurrentBlock().Root())
+}
+
+// StateAt returns a new mutable state based on a particular point in time.
+func (self *BlockChain) StateAt(root common.Hash) (*state.StateDB, error) {
+	return self.stateCache.New(root)
 }
 
 // Reset purges the entire blockchain, restoring it to its genesis state.
@@ -763,13 +776,20 @@ func (self *BlockChain) WriteBlock(block *types.Block) (status WriteStatus, err 
 	if ptd == nil {
 		return NonStatTy, ParentError(block.ParentHash())
 	}
+	// Make sure no inconsistent state is leaked during insertion
+	self.mu.Lock()
+	defer self.mu.Unlock()
 
 	localTd := self.GetTd(self.currentBlock.Hash())
 	externTd := new(big.Int).Add(block.Difficulty(), ptd)
 
-	// Make sure no inconsistent state is leaked during insertion
-	self.mu.Lock()
-	defer self.mu.Unlock()
+	// Irrelevant of the canonical status, write the block itself to the database
+	if err := self.hc.WriteTd(block.Hash(), externTd); err != nil {
+		glog.Fatalf("failed to write block total difficulty: %v", err)
+	}
+	if err := WriteBlock(self.chainDb, block); err != nil {
+		glog.Fatalf("failed to write block contents: %v", err)
+	}
 
 	// If the total difficulty is higher than our known, add it to the canonical chain
 	// Second clause in the if statement reduces the vulnerability to selfish mining.
@@ -781,20 +801,11 @@ func (self *BlockChain) WriteBlock(block *types.Block) (status WriteStatus, err 
 				return NonStatTy, err
 			}
 		}
-		// Insert the block as the new head of the chain
-		self.insert(block)
+		self.insert(block) // Insert the block as the new head of the chain
 		status = CanonStatTy
 	} else {
 		status = SideStatTy
 	}
-	// Irrelevant of the canonical status, write the block itself to the database
-	if err := self.hc.WriteTd(block.Hash(), externTd); err != nil {
-		glog.Fatalf("failed to write block total difficulty: %v", err)
-	}
-	if err := WriteBlock(self.chainDb, block); err != nil {
-		glog.Fatalf("failed to write block contents: %v", err)
-	}
-
 	self.futureBlocks.Remove(block.Hash())
 
 	return
@@ -885,25 +896,30 @@ func (self *BlockChain) InsertChain(chain types.Blocks) (int, error) {
 
 		// Create a new statedb using the parent block and report an
 		// error if it fails.
-		statedb, err := state.New(self.GetBlock(block.ParentHash()).Root(), self.chainDb)
+		switch {
+		case i == 0:
+			err = self.stateCache.Reset(self.GetBlock(block.ParentHash()).Root())
+		default:
+			err = self.stateCache.Reset(chain[i-1].Root())
+		}
 		if err != nil {
 			reportBlock(block, err)
 			return i, err
 		}
 		// Process block using the parent state as reference point.
-		receipts, logs, usedGas, err := self.processor.Process(block, statedb, self.config.VmConfig)
+		receipts, logs, usedGas, err := self.processor.Process(block, self.stateCache, self.config.VmConfig)
 		if err != nil {
 			reportBlock(block, err)
 			return i, err
 		}
 		// Validate the state using the default validator
-		err = self.Validator().ValidateState(block, self.GetBlock(block.ParentHash()), statedb, receipts, usedGas)
+		err = self.Validator().ValidateState(block, self.GetBlock(block.ParentHash()), self.stateCache, receipts, usedGas)
 		if err != nil {
 			reportBlock(block, err)
 			return i, err
 		}
 		// Write state changes to database
-		_, err = statedb.Commit()
+		_, err = self.stateCache.Commit()
 		if err != nil {
 			return i, err
 		}
@@ -1117,15 +1133,12 @@ func (self *BlockChain) update() {
 	}
 }
 
-// reportBlock reports the given block and error using the canonical block
-// reporting tool. Reporting the block to the service is handled in a separate
-// goroutine.
+// reportBlock logs a bad block error.
 func reportBlock(block *types.Block, err error) {
 	if glog.V(logger.Error) {
 		glog.Errorf("Bad block #%v (%s)\n", block.Number(), block.Hash().Hex())
 		glog.Errorf("    %v", err)
 	}
-	go ReportBlock(block, err)
 }
 
 // InsertHeaderChain attempts to insert the given header chain in to the local
@@ -1213,3 +1226,6 @@ func (self *BlockChain) GetBlockHashesFromHash(hash common.Hash, max uint64) []c
 func (self *BlockChain) GetHeaderByNumber(number uint64) *types.Header {
 	return self.hc.GetHeaderByNumber(number)
 }
+
+// Config retrieves the blockchain's chain configuration.
+func (self *BlockChain) Config() *ChainConfig { return self.config }

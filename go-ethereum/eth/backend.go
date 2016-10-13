@@ -26,6 +26,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/ethereum/ethash"
@@ -113,12 +114,14 @@ type Ethereum struct {
 
 	// Handlers
 	txPool          *core.TxPool
+	txMu            sync.Mutex
 	blockchain      *core.BlockChain
 	accountManager  *accounts.Manager
 	pow             *ethash.Ethash
 	protocolManager *ProtocolManager
 	SolcPath        string
 	solc            *compiler.Solidity
+	gpo             *GasPriceOracle
 
 	GpoMinGasPrice          *big.Int
 	GpoMaxGasPrice          *big.Int
@@ -247,6 +250,8 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 	if config.ChainConfig == nil {
 		return nil, errors.New("missing chain config")
 	}
+	core.WriteChainConfig(chainDb, genesis.Hash(), config.ChainConfig)
+
 	eth.chainConfig = config.ChainConfig
 	eth.chainConfig.VmConfig = vm.Config{
 		EnableJit: config.EnableJit,
@@ -260,6 +265,8 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 		}
 		return nil, err
 	}
+	eth.gpo = NewGasPriceOracle(eth)
+
 	newPool := core.NewTxPool(eth.chainConfig, eth.EventMux(), eth.blockchain.State, eth.blockchain.GasLimit)
 	eth.txPool = newPool
 
@@ -276,34 +283,31 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 // APIs returns the collection of RPC services the ethereum package offers.
 // NOTE, some of these services probably need to be moved to somewhere else.
 func (s *Ethereum) APIs() []rpc.API {
-	// share gas price oracle in API's
-	gpo := NewGasPriceOracle(s)
-
 	return []rpc.API{
 		{
 			Namespace: "eth",
 			Version:   "1.0",
-			Service:   NewPublicEthereumAPI(s, gpo),
+			Service:   NewPublicEthereumAPI(s),
 			Public:    true,
 		}, {
 			Namespace: "eth",
 			Version:   "1.0",
-			Service:   NewPublicAccountAPI(s.AccountManager()),
+			Service:   NewPublicAccountAPI(s.accountManager),
 			Public:    true,
 		}, {
 			Namespace: "personal",
 			Version:   "1.0",
-			Service:   NewPrivateAccountAPI(s.AccountManager()),
+			Service:   NewPrivateAccountAPI(s),
 			Public:    false,
 		}, {
 			Namespace: "eth",
 			Version:   "1.0",
-			Service:   NewPublicBlockChainAPI(s.chainConfig, s.BlockChain(), s.Miner(), s.ChainDb(), gpo, s.EventMux(), s.AccountManager()),
+			Service:   NewPublicBlockChainAPI(s.chainConfig, s.blockchain, s.miner, s.chainDb, s.gpo, s.eventMux, s.accountManager),
 			Public:    true,
 		}, {
 			Namespace: "eth",
 			Version:   "1.0",
-			Service:   NewPublicTransactionPoolAPI(s, gpo),
+			Service:   NewPublicTransactionPoolAPI(s),
 			Public:    true,
 		}, {
 			Namespace: "eth",
@@ -313,7 +317,7 @@ func (s *Ethereum) APIs() []rpc.API {
 		}, {
 			Namespace: "eth",
 			Version:   "1.0",
-			Service:   downloader.NewPublicDownloaderAPI(s.Downloader(), s.EventMux()),
+			Service:   downloader.NewPublicDownloaderAPI(s.protocolManager.downloader, s.eventMux),
 			Public:    true,
 		}, {
 			Namespace: "miner",
@@ -328,7 +332,7 @@ func (s *Ethereum) APIs() []rpc.API {
 		}, {
 			Namespace: "eth",
 			Version:   "1.0",
-			Service:   filters.NewPublicFilterAPI(s.ChainDb(), s.EventMux()),
+			Service:   filters.NewPublicFilterAPI(s.chainDb, s.eventMux),
 			Public:    true,
 		}, {
 			Namespace: "admin",
@@ -351,7 +355,7 @@ func (s *Ethereum) APIs() []rpc.API {
 		}, {
 			Namespace: "admin",
 			Version:   "1.0",
-			Service:   ethreg.NewPrivateRegistarAPI(s.chainConfig, s.BlockChain(), s.ChainDb(), s.TxPool(), s.AccountManager()),
+			Service:   ethreg.NewPrivateRegistarAPI(s.chainConfig, s.blockchain, s.chainDb, s.txPool, s.accountManager),
 		},
 	}
 }
@@ -416,6 +420,7 @@ func (s *Ethereum) Stop() error {
 	s.blockchain.Stop()
 	s.protocolManager.Stop()
 	s.txPool.Stop()
+	s.miner.Stop()
 	s.eventMux.Stop()
 
 	s.StopAutoDAG()
