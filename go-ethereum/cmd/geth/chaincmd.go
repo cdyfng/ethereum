@@ -116,7 +116,7 @@ func exportChain(ctx *cli.Context) {
 }
 
 func removeDB(ctx *cli.Context) {
-	confirm, err := utils.PromptConfirm("Remove local database?")
+	confirm, err := utils.Stdin.ConfirmPrompt("Remove local database?")
 	if err != nil {
 		utils.Fatalf("%v", err)
 	}
@@ -137,8 +137,7 @@ func upgradeDB(ctx *cli.Context) {
 	glog.Infoln("Upgrading blockchain database")
 
 	chain, chainDb := utils.MakeChain(ctx)
-	v, _ := chainDb.Get([]byte("BlockchainVersion"))
-	bcVersion := int(common.NewValue(v).Uint())
+	bcVersion := core.GetBlockChainVersion(chainDb)
 	if bcVersion == 0 {
 		bcVersion = core.BlockChainVersion
 	}
@@ -154,7 +153,7 @@ func upgradeDB(ctx *cli.Context) {
 
 	// Import the chain file.
 	chain, chainDb = utils.MakeChain(ctx)
-	chainDb.Put([]byte("BlockchainVersion"), common.NewValue(core.BlockChainVersion).Bytes())
+	core.WriteBlockChainVersion(chainDb, core.BlockChainVersion)
 	err := utils.ImportChain(chain, exportFile)
 	chainDb.Close()
 	if err != nil {
@@ -179,7 +178,11 @@ func dump(ctx *cli.Context) {
 			fmt.Println("{}")
 			utils.Fatalf("block not found")
 		} else {
-			state := state.New(block.Root(), chainDb)
+			state, err := state.New(block.Root(), chainDb)
+			if err != nil {
+				utils.Fatalf("could not create new state: %v", err)
+				return
+			}
 			fmt.Printf("%s\n", state.Dump())
 		}
 	}

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-// Package fetcher contains the block announcement based synchonisation.
+// Package fetcher contains the block announcement based synchronisation.
 package fetcher
 
 import (
@@ -34,7 +34,7 @@ import (
 const (
 	arriveTimeout = 500 * time.Millisecond // Time allowance before an announced block is explicitly requested
 	gatherSlack   = 100 * time.Millisecond // Interval used to collate almost-expired announces with fetches
-	fetchTimeout  = 5 * time.Second        // Maximum alloted time to return an explicitly requested block
+	fetchTimeout  = 5 * time.Second        // Maximum allotted time to return an explicitly requested block
 	maxUncleDist  = 7                      // Maximum allowed backward distance from the chain head
 	maxQueueDist  = 32                     // Maximum allowed distance from the chain head to queue
 	hashLimit     = 256                    // Maximum number of unique blocks a peer may have announced
@@ -142,9 +142,11 @@ type Fetcher struct {
 	dropPeer       peerDropFn         // Drops a peer for misbehaving
 
 	// Testing hooks
-	fetchingHook   func([]common.Hash) // Method to call upon starting a block (eth/61) or header (eth/62) fetch
-	completingHook func([]common.Hash) // Method to call upon starting a block body fetch (eth/62)
-	importedHook   func(*types.Block)  // Method to call upon successful block import (both eth/61 and eth/62)
+	announceChangeHook func(common.Hash, bool) // Method to call upon adding or deleting a hash from the announce list
+	queueChangeHook    func(common.Hash, bool) // Method to call upon adding or deleting a block from the import queue
+	fetchingHook       func([]common.Hash)     // Method to call upon starting a block (eth/61) or header (eth/62) fetch
+	completingHook     func([]common.Hash)     // Method to call upon starting a block body fetch (eth/62)
+	importedHook       func(*types.Block)      // Method to call upon successful block import (both eth/61 and eth/62)
 }
 
 // New creates a block fetcher to retrieve blocks based on hash announcements.
@@ -174,7 +176,7 @@ func New(getBlock blockRetrievalFn, validateBlock blockValidatorFn, broadcastBlo
 	}
 }
 
-// Start boots up the announcement based synchoniser, accepting and processing
+// Start boots up the announcement based synchroniser, accepting and processing
 // hash notifications and block fetches until termination requested.
 func (f *Fetcher) Start() {
 	go f.loop()
@@ -324,11 +326,16 @@ func (f *Fetcher) loop() {
 		height := f.chainHeight()
 		for !f.queue.Empty() {
 			op := f.queue.PopItem().(*inject)
-
+			if f.queueChangeHook != nil {
+				f.queueChangeHook(op.block.Hash(), false)
+			}
 			// If too high up the chain or phase, continue later
 			number := op.block.NumberU64()
 			if number > height+1 {
 				f.queue.Push(op, -float32(op.block.NumberU64()))
+				if f.queueChangeHook != nil {
+					f.queueChangeHook(op.block.Hash(), true)
+				}
 				break
 			}
 			// Otherwise if fresh and still unknown, try and import
@@ -372,6 +379,9 @@ func (f *Fetcher) loop() {
 			}
 			f.announces[notification.origin] = count
 			f.announced[notification.hash] = append(f.announced[notification.hash], notification)
+			if f.announceChangeHook != nil && len(f.announced[notification.hash]) == 1 {
+				f.announceChangeHook(notification.hash, true)
+			}
 			if len(f.announced) == 1 {
 				f.rescheduleFetch(fetchTimer)
 			}
@@ -714,7 +724,9 @@ func (f *Fetcher) enqueue(peer string, block *types.Block) {
 		f.queues[peer] = count
 		f.queued[hash] = op
 		f.queue.Push(op, -float32(block.NumberU64()))
-
+		if f.queueChangeHook != nil {
+			f.queueChangeHook(op.block.Hash(), true)
+		}
 		if glog.V(logger.Debug) {
 			glog.Infof("Peer %s: queued block #%d [%x…], total %v", peer, block.NumberU64(), hash.Bytes()[:4], f.queue.Size())
 		}
@@ -781,7 +793,9 @@ func (f *Fetcher) forgetHash(hash common.Hash) {
 		}
 	}
 	delete(f.announced, hash)
-
+	if f.announceChangeHook != nil {
+		f.announceChangeHook(hash, false)
+	}
 	// Remove any pending fetches and decrement the DOS counters
 	if announce := f.fetching[hash]; announce != nil {
 		f.announces[announce.origin]--

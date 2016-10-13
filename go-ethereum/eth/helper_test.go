@@ -1,9 +1,26 @@
+// Copyright 2015 The go-ethereum Authors
+// This file is part of the go-ethereum library.
+//
+// The go-ethereum library is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// The go-ethereum library is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public License
+// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
+
 // This file contains some shares testing functionality, common to  multiple
 // different files and modules being tested.
 
 package eth
 
 import (
+	"crypto/ecdsa"
 	"crypto/rand"
 	"math/big"
 	"sync"
@@ -20,29 +37,47 @@ import (
 )
 
 var (
-	testBankKey, _  = crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")
-	testBankAddress = crypto.PubkeyToAddress(testBankKey.PublicKey)
-	testBankFunds   = big.NewInt(1000000)
+	testBankKey, _ = crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")
+	testBank       = core.GenesisAccount{
+		Address: crypto.PubkeyToAddress(testBankKey.PublicKey),
+		Balance: big.NewInt(1000000),
+	}
 )
 
 // newTestProtocolManager creates a new protocol manager for testing purposes,
 // with the given number of blocks already known, and potential notification
 // channels for different events.
-func newTestProtocolManager(blocks int, generator func(int, *core.BlockGen), newtx chan<- []*types.Transaction) *ProtocolManager {
+func newTestProtocolManager(fastSync bool, blocks int, generator func(int, *core.BlockGen), newtx chan<- []*types.Transaction) (*ProtocolManager, error) {
 	var (
-		evmux       = new(event.TypeMux)
-		pow         = new(core.FakePow)
-		db, _       = ethdb.NewMemDatabase()
-		genesis     = core.WriteGenesisBlockForTesting(db, core.GenesisAccount{testBankAddress, testBankFunds})
-		chainman, _ = core.NewChainManager(db, pow, evmux)
-		blockproc   = core.NewBlockProcessor(db, pow, chainman, evmux)
+		evmux         = new(event.TypeMux)
+		pow           = new(core.FakePow)
+		db, _         = ethdb.NewMemDatabase()
+		genesis       = core.WriteGenesisBlockForTesting(db, testBank)
+		chainConfig   = &core.ChainConfig{HomesteadBlock: big.NewInt(0)} // homestead set to 0 because of chain maker
+		blockchain, _ = core.NewBlockChain(db, chainConfig, pow, evmux)
 	)
-	chainman.SetProcessor(blockproc)
-	if _, err := chainman.InsertChain(core.GenerateChain(genesis, db, blocks, generator)); err != nil {
+	chain, _ := core.GenerateChain(genesis, db, blocks, generator)
+	if _, err := blockchain.InsertChain(chain); err != nil {
 		panic(err)
 	}
-	pm := NewProtocolManager(NetworkId, evmux, &testTxPool{added: newtx}, pow, chainman, db)
+
+	pm, err := NewProtocolManager(chainConfig, fastSync, NetworkId, evmux, &testTxPool{added: newtx}, pow, blockchain, db)
+	if err != nil {
+		return nil, err
+	}
 	pm.Start()
+	return pm, nil
+}
+
+// newTestProtocolManagerMust creates a new protocol manager for testing purposes,
+// with the given number of blocks already known, and potential notification
+// channels for different events. In case of an error, the constructor force-
+// fails the test.
+func newTestProtocolManagerMust(t *testing.T, fastSync bool, blocks int, generator func(int, *core.BlockGen), newtx chan<- []*types.Transaction) *ProtocolManager {
+	pm, err := newTestProtocolManager(fastSync, blocks, generator, newtx)
+	if err != nil {
+		t.Fatalf("Failed to create protocol manager: %v", err)
+	}
 	return pm
 }
 
@@ -78,10 +113,9 @@ func (p *testTxPool) GetTransactions() types.Transactions {
 }
 
 // newTestTransaction create a new dummy transaction.
-func newTestTransaction(from *crypto.Key, nonce uint64, datasize int) *types.Transaction {
+func newTestTransaction(from *ecdsa.PrivateKey, nonce uint64, datasize int) *types.Transaction {
 	tx := types.NewTransaction(nonce, common.Address{}, big.NewInt(0), big.NewInt(100000), big.NewInt(0), make([]byte, datasize))
-	tx, _ = tx.SignECDSA(from.PrivateKey)
-
+	tx, _ = tx.SignECDSA(from)
 	return tx
 }
 
@@ -101,7 +135,7 @@ func newTestPeer(name string, version int, pm *ProtocolManager, shake bool) (*te
 	var id discover.NodeID
 	rand.Read(id[:])
 
-	peer := pm.newPeer(version, NetworkId, p2p.NewPeer(id, name, nil), net)
+	peer := pm.newPeer(version, p2p.NewPeer(id, name, nil), net)
 
 	// Start the peer on a new thread
 	errc := make(chan error, 1)
@@ -116,7 +150,7 @@ func newTestPeer(name string, version int, pm *ProtocolManager, shake bool) (*te
 	}
 	// Execute any implicitly requested handshakes and return
 	if shake {
-		td, head, genesis := pm.chainman.Status()
+		td, head, genesis := pm.blockchain.Status()
 		tp.handshake(nil, td, head, genesis)
 	}
 	return tp, errc

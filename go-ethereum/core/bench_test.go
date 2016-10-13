@@ -82,7 +82,7 @@ func genValueTx(nbytes int) func(int, *BlockGen) {
 	return func(i int, gen *BlockGen) {
 		toaddr := common.Address{}
 		data := make([]byte, nbytes)
-		gas := IntrinsicGas(data)
+		gas := IntrinsicGas(data, false, false)
 		tx, _ := types.NewTransaction(gen.TxNonce(benchRootAddr), toaddr, big.NewInt(1), gas, nil, data).SignECDSA(benchRootKey)
 		gen.AddTx(tx)
 	}
@@ -153,7 +153,7 @@ func benchInsertChain(b *testing.B, disk bool, gen func(int, *BlockGen)) {
 			b.Fatalf("cannot create temporary directory: %v", err)
 		}
 		defer os.RemoveAll(dir)
-		db, err = ethdb.NewLDBDatabase(dir, 0)
+		db, err = ethdb.NewLDBDatabase(dir, 128, 128)
 		if err != nil {
 			b.Fatalf("cannot create temporary database: %v", err)
 		}
@@ -163,13 +163,12 @@ func benchInsertChain(b *testing.B, disk bool, gen func(int, *BlockGen)) {
 	// Generate a chain of b.N blocks using the supplied block
 	// generator function.
 	genesis := WriteGenesisBlockForTesting(db, GenesisAccount{benchRootAddr, benchRootFunds})
-	chain := GenerateChain(genesis, db, b.N, gen)
+	chain, _ := GenerateChain(genesis, db, b.N, gen)
 
 	// Time the insertion of the new chain.
 	// State and blocks are stored in the same DB.
 	evmux := new(event.TypeMux)
-	chainman, _ := NewChainManager(db, FakePow{}, evmux)
-	chainman.SetProcessor(NewBlockProcessor(db, FakePow{}, chainman, evmux))
+	chainman, _ := NewBlockChain(db, &ChainConfig{HomesteadBlock: new(big.Int)}, FakePow{}, evmux)
 	defer chainman.Stop()
 	b.ReportAllocs()
 	b.ResetTimer()

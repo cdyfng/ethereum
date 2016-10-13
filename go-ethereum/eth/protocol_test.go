@@ -17,7 +17,6 @@
 package eth
 
 import (
-	"crypto/rand"
 	"fmt"
 	"sync"
 	"testing"
@@ -35,17 +34,16 @@ func init() {
 	// glog.SetV(6)
 }
 
-var testAccount = crypto.NewKey(rand.Reader)
+var testAccount, _ = crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")
 
 // Tests that handshake failures are detected and reported correctly.
 func TestStatusMsgErrors61(t *testing.T) { testStatusMsgErrors(t, 61) }
 func TestStatusMsgErrors62(t *testing.T) { testStatusMsgErrors(t, 62) }
 func TestStatusMsgErrors63(t *testing.T) { testStatusMsgErrors(t, 63) }
-func TestStatusMsgErrors64(t *testing.T) { testStatusMsgErrors(t, 64) }
 
 func testStatusMsgErrors(t *testing.T, protocol int) {
-	pm := newTestProtocolManager(0, nil, nil)
-	td, currentBlock, genesis := pm.chainman.Status()
+	pm := newTestProtocolManagerMust(t, false, 0, nil, nil)
+	td, currentBlock, genesis := pm.blockchain.Status()
 	defer pm.Stop()
 
 	tests := []struct {
@@ -80,7 +78,7 @@ func testStatusMsgErrors(t *testing.T, protocol int) {
 		select {
 		case err := <-errc:
 			if err == nil {
-				t.Errorf("test %d: protocol returned nil error, want %q", test.wantError)
+				t.Errorf("test %d: protocol returned nil error, want %q", i, test.wantError)
 			} else if err.Error() != test.wantError.Error() {
 				t.Errorf("test %d: wrong error: got %q, want %q", i, err, test.wantError)
 			}
@@ -95,11 +93,10 @@ func testStatusMsgErrors(t *testing.T, protocol int) {
 func TestRecvTransactions61(t *testing.T) { testRecvTransactions(t, 61) }
 func TestRecvTransactions62(t *testing.T) { testRecvTransactions(t, 62) }
 func TestRecvTransactions63(t *testing.T) { testRecvTransactions(t, 63) }
-func TestRecvTransactions64(t *testing.T) { testRecvTransactions(t, 64) }
 
 func testRecvTransactions(t *testing.T, protocol int) {
 	txAdded := make(chan []*types.Transaction)
-	pm := newTestProtocolManager(0, nil, txAdded)
+	pm := newTestProtocolManagerMust(t, false, 0, nil, txAdded)
 	p, _ := newTestPeer("peer", protocol, pm, true)
 	defer pm.Stop()
 	defer p.close()
@@ -124,10 +121,9 @@ func testRecvTransactions(t *testing.T, protocol int) {
 func TestSendTransactions61(t *testing.T) { testSendTransactions(t, 61) }
 func TestSendTransactions62(t *testing.T) { testSendTransactions(t, 62) }
 func TestSendTransactions63(t *testing.T) { testSendTransactions(t, 63) }
-func TestSendTransactions64(t *testing.T) { testSendTransactions(t, 64) }
 
 func testSendTransactions(t *testing.T, protocol int) {
-	pm := newTestProtocolManager(0, nil, nil)
+	pm := newTestProtocolManagerMust(t, false, 0, nil, nil)
 	defer pm.Stop()
 
 	// Fill the pool with big transactions.

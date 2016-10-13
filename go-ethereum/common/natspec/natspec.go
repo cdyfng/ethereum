@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
+// +build ignore
+
 package natspec
 
 import (
@@ -23,7 +25,7 @@ import (
 	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/docserver"
+	"github.com/ethereum/go-ethereum/common/httpclient"
 	"github.com/ethereum/go-ethereum/common/registrar"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/xeth"
@@ -43,7 +45,7 @@ type NatSpec struct {
 // the implementation is frontend friendly in that it always gives back
 // a notice that is safe to display
 // :FIXME: the second return value is an error, which can be used to fine-tune bahaviour
-func GetNotice(xeth *xeth.XEth, tx string, http *docserver.DocServer) (notice string) {
+func GetNotice(xeth *xeth.XEth, tx string, http *httpclient.HTTPClient) (notice string) {
 	ns, err := New(xeth, tx, http)
 	if err != nil {
 		if ns == nil {
@@ -83,7 +85,7 @@ type contractInfo struct {
 	DeveloperDoc  json.RawMessage `json:"developerDoc"`
 }
 
-func New(xeth *xeth.XEth, jsontx string, http *docserver.DocServer) (self *NatSpec, err error) {
+func New(xeth *xeth.XEth, jsontx string, http *httpclient.HTTPClient) (self *NatSpec, err error) {
 
 	// extract contract address from tx
 	var tx jsonTx
@@ -104,7 +106,7 @@ func New(xeth *xeth.XEth, jsontx string, http *docserver.DocServer) (self *NatSp
 }
 
 // also called by admin.contractInfo.get
-func FetchDocsForContract(contractAddress string, xeth *xeth.XEth, ds *docserver.DocServer) (content []byte, err error) {
+func FetchDocsForContract(contractAddress string, xeth *xeth.XEth, client *httpclient.HTTPClient) (content []byte, err error) {
 	// retrieve contract hash from state
 	codehex := xeth.CodeAt(contractAddress)
 	codeb := xeth.CodeAtBytes(contractAddress)
@@ -113,7 +115,7 @@ func FetchDocsForContract(contractAddress string, xeth *xeth.XEth, ds *docserver
 		err = fmt.Errorf("contract (%v) not found", contractAddress)
 		return
 	}
-	codehash := common.BytesToHash(crypto.Sha3(codeb))
+	codehash := common.BytesToHash(crypto.Keccak256(codeb))
 	// set up nameresolver with natspecreg + urlhint contract addresses
 	reg := registrar.New(xeth)
 
@@ -122,8 +124,8 @@ func FetchDocsForContract(contractAddress string, xeth *xeth.XEth, ds *docserver
 	if err != nil {
 		return
 	}
-	if ds.HasScheme("bzz") {
-		content, err = ds.Get("bzz://"+hash.Hex()[2:], "")
+	if client.HasScheme("bzz") {
+		content, err = client.Get("bzz://"+hash.Hex()[2:], "")
 		if err == nil { // non-fatal
 			return
 		}
@@ -137,7 +139,7 @@ func FetchDocsForContract(contractAddress string, xeth *xeth.XEth, ds *docserver
 	}
 
 	// get content via http client and authenticate content using hash
-	content, err = ds.GetAuthContent(uri, hash)
+	content, err = client.GetAuthContent(uri, hash)
 	if err != nil {
 		return
 	}
@@ -195,7 +197,7 @@ type userDoc struct {
 func (self *NatSpec) makeAbi2method(abiKey [8]byte) (meth *method) {
 	for signature, m := range self.userDoc.Methods {
 		name := strings.Split(signature, "(")[0]
-		hash := []byte(common.Bytes2Hex(crypto.Sha3([]byte(signature))))
+		hash := []byte(common.Bytes2Hex(crypto.Keccak256([]byte(signature))))
 		var key [8]byte
 		copy(key[:], hash[:8])
 		if bytes.Equal(key[:], abiKey[:]) {

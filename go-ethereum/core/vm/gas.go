@@ -37,6 +37,7 @@ var (
 	GasContractByte = big.NewInt(200)
 )
 
+// baseCheck checks for any stack error underflows
 func baseCheck(op OpCode, stack *stack, gas *big.Int) error {
 	// PUSH and DUP are a bit special. They all cost the same but we do want to have checking on stack push limit
 	// PUSH is also allowed to calculate the same price for all PUSHes
@@ -63,6 +64,7 @@ func baseCheck(op OpCode, stack *stack, gas *big.Int) error {
 	return nil
 }
 
+// casts a arbitrary number to the amount of words (sets of 32 bytes)
 func toWordSize(size *big.Int) *big.Int {
 	tmp := new(big.Int)
 	tmp.Add(size, u256(31))
@@ -134,6 +136,7 @@ var _baseCheck = map[OpCode]req{
 	CREATE:       {3, params.CreateGas, 1},
 	CALL:         {7, params.CallGas, 1},
 	CALLCODE:     {7, params.CallGas, 1},
+	DELEGATECALL: {6, params.CallGas, 1},
 	JUMPDEST:     {0, params.JumpdestGas, 0},
 	SUICIDE:      {1, Zero, 0},
 	RETURN:       {2, Zero, 0},

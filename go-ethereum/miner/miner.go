@@ -51,8 +51,8 @@ type Miner struct {
 	shouldStart int32 // should start indicates whether we should start after sync
 }
 
-func New(eth core.Backend, mux *event.TypeMux, pow pow.PoW) *Miner {
-	miner := &Miner{eth: eth, mux: mux, pow: pow, worker: newWorker(common.Address{}, eth), canStart: 1}
+func New(eth core.Backend, config *core.ChainConfig, mux *event.TypeMux, pow pow.PoW) *Miner {
+	miner := &Miner{eth: eth, mux: mux, pow: pow, worker: newWorker(config, common.Address{}, eth), canStart: 1}
 	go miner.update()
 
 	return miner
@@ -66,7 +66,7 @@ func (self *Miner) update() {
 	events := self.mux.Subscribe(downloader.StartEvent{}, downloader.DoneEvent{}, downloader.FailedEvent{})
 out:
 	for ev := range events.Chan() {
-		switch ev.(type) {
+		switch ev.Data.(type) {
 		case downloader.StartEvent:
 			atomic.StoreInt32(&self.canStart, 0)
 			if self.Mining() {
@@ -133,8 +133,11 @@ func (self *Miner) Register(agent Agent) {
 	if self.Mining() {
 		agent.Start()
 	}
-
 	self.worker.register(agent)
+}
+
+func (self *Miner) Unregister(agent Agent) {
+	self.worker.unregister(agent)
 }
 
 func (self *Miner) Mining() bool {
@@ -146,7 +149,7 @@ func (self *Miner) HashRate() (tot int64) {
 	// do we care this might race? is it worth we're rewriting some
 	// aspects of the worker/locking up agents so we can get an accurate
 	// hashrate?
-	for _, agent := range self.worker.agents {
+	for agent := range self.worker.agents {
 		tot += agent.GetHashRate()
 	}
 	return
@@ -161,12 +164,9 @@ func (self *Miner) SetExtra(extra []byte) error {
 	return nil
 }
 
-func (self *Miner) PendingState() *state.StateDB {
-	return self.worker.pendingState()
-}
-
-func (self *Miner) PendingBlock() *types.Block {
-	return self.worker.pendingBlock()
+// Pending returns the currently pending block and associated state.
+func (self *Miner) Pending() (*types.Block, *state.StateDB) {
+	return self.worker.pending()
 }
 
 func (self *Miner) SetEtherbase(addr common.Address) {

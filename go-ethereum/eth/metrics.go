@@ -72,7 +72,7 @@ type meteredMsgReadWriter struct {
 }
 
 // newMeteredMsgWriter wraps a p2p MsgReadWriter with metering support. If the
-// metrics system is disabled, this fucntion returns the original object.
+// metrics system is disabled, this function returns the original object.
 func newMeteredMsgWriter(rw p2p.MsgReadWriter) p2p.MsgReadWriter {
 	if !metrics.Enabled {
 		return rw
@@ -101,7 +101,7 @@ func (rw *meteredMsgReadWriter) ReadMsg() (p2p.Msg, error) {
 		packets, traffic = reqBlockInPacketsMeter, reqBlockInTrafficMeter
 
 	case rw.version >= eth62 && msg.Code == BlockHeadersMsg:
-		packets, traffic = reqBlockInPacketsMeter, reqBlockInTrafficMeter
+		packets, traffic = reqHeaderInPacketsMeter, reqHeaderInTrafficMeter
 	case rw.version >= eth62 && msg.Code == BlockBodiesMsg:
 		packets, traffic = reqBodyInPacketsMeter, reqBodyInTrafficMeter
 

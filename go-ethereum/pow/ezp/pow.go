@@ -48,7 +48,7 @@ func (pow *EasyPow) Turbo(on bool) {
 	pow.turbo = on
 }
 
-func (pow *EasyPow) Search(block pow.Block, stop <-chan struct{}) (uint64, []byte) {
+func (pow *EasyPow) Search(block pow.Block, stop <-chan struct{}, index int) (uint64, []byte) {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	hash := block.HashNoNonce()
 	diff := block.Difficulty()
@@ -91,8 +91,6 @@ empty:
 			time.Sleep(20 * time.Microsecond)
 		}
 	}
-
-	return 0, nil
 }
 
 func (pow *EasyPow) Verify(block pow.Block) bool {

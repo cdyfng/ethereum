@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"math/big"
 	"sync"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -38,39 +39,53 @@ var (
 )
 
 const (
-	maxKnownTxs    = 32768 // Maximum transactions hashes to keep in the known list (prevent DOS)
-	maxKnownBlocks = 1024  // Maximum block hashes to keep in the known list (prevent DOS)
+	maxKnownTxs      = 32768 // Maximum transactions hashes to keep in the known list (prevent DOS)
+	maxKnownBlocks   = 1024  // Maximum block hashes to keep in the known list (prevent DOS)
+	handshakeTimeout = 5 * time.Second
 )
 
-type peer struct {
-	*p2p.Peer
+// PeerInfo represents a short summary of the Ethereum sub-protocol metadata known
+// about a connected peer.
+type PeerInfo struct {
+	Version    int      `json:"version"`    // Ethereum protocol version negotiated
+	Difficulty *big.Int `json:"difficulty"` // Total difficulty of the peer's blockchain
+	Head       string   `json:"head"`       // SHA3 hash of the peer's best owned block
+}
 
+type peer struct {
+	id string
+
+	*p2p.Peer
 	rw p2p.MsgReadWriter
 
 	version int // Protocol version negotiated
-	network int // Network ID being on
-
-	id string
-
-	head common.Hash
-	td   *big.Int
-	lock sync.RWMutex
+	head    common.Hash
+	td      *big.Int
+	lock    sync.RWMutex
 
 	knownTxs    *set.Set // Set of transaction hashes known to be known by this peer
 	knownBlocks *set.Set // Set of block hashes known to be known by this peer
 }
 
-func newPeer(version, network int, p *p2p.Peer, rw p2p.MsgReadWriter) *peer {
+func newPeer(version int, p *p2p.Peer, rw p2p.MsgReadWriter) *peer {
 	id := p.ID()
 
 	return &peer{
 		Peer:        p,
 		rw:          rw,
 		version:     version,
-		network:     network,
 		id:          fmt.Sprintf("%x", id[:8]),
 		knownTxs:    set.New(),
 		knownBlocks: set.New(),
+	}
+}
+
+// Info gathers and returns a collection of metadata known about a peer.
+func (p *peer) Info() *PeerInfo {
+	return &PeerInfo{
+		Version:    p.version,
+		Difficulty: p.Td(),
+		Head:       fmt.Sprintf("%x", p.Head()),
 	}
 }
 
@@ -191,15 +206,15 @@ func (p *peer) SendBlockBodiesRLP(bodies []rlp.RawValue) error {
 	return p2p.Send(p.rw, BlockBodiesMsg, bodies)
 }
 
-// SendNodeData sends a batch of arbitrary internal data, corresponding to the
+// SendNodeDataRLP sends a batch of arbitrary internal data, corresponding to the
 // hashes requested.
 func (p *peer) SendNodeData(data [][]byte) error {
 	return p2p.Send(p.rw, NodeDataMsg, data)
 }
 
-// SendReceipts sends a batch of transaction receipts, corresponding to the ones
-// requested.
-func (p *peer) SendReceipts(receipts []*types.Receipt) error {
+// SendReceiptsRLP sends a batch of transaction receipts, corresponding to the
+// ones requested from an already RLP encoded format.
+func (p *peer) SendReceiptsRLP(receipts []rlp.RawValue) error {
 	return p2p.Send(p.rw, ReceiptsMsg, receipts)
 }
 
@@ -266,19 +281,40 @@ func (p *peer) RequestReceipts(hashes []common.Hash) error {
 
 // Handshake executes the eth protocol handshake, negotiating version number,
 // network IDs, difficulties, head and genesis blocks.
-func (p *peer) Handshake(td *big.Int, head common.Hash, genesis common.Hash) error {
+func (p *peer) Handshake(network int, td *big.Int, head common.Hash, genesis common.Hash) error {
 	// Send out own handshake in a new thread
-	errc := make(chan error, 1)
+	errc := make(chan error, 2)
+	var status statusData // safe to read after two values have been received from errc
+
 	go func() {
 		errc <- p2p.Send(p.rw, StatusMsg, &statusData{
 			ProtocolVersion: uint32(p.version),
-			NetworkId:       uint32(p.network),
+			NetworkId:       uint32(network),
 			TD:              td,
 			CurrentBlock:    head,
 			GenesisBlock:    genesis,
 		})
 	}()
-	// In the mean time retrieve the remote status message
+	go func() {
+		errc <- p.readStatus(network, &status, genesis)
+	}()
+	timeout := time.NewTimer(handshakeTimeout)
+	defer timeout.Stop()
+	for i := 0; i < 2; i++ {
+		select {
+		case err := <-errc:
+			if err != nil {
+				return err
+			}
+		case <-timeout.C:
+			return p2p.DiscReadTimeout
+		}
+	}
+	p.td, p.head = status.TD, status.CurrentBlock
+	return nil
+}
+
+func (p *peer) readStatus(network int, status *statusData, genesis common.Hash) (err error) {
 	msg, err := p.rw.ReadMsg()
 	if err != nil {
 		return err
@@ -290,22 +326,19 @@ func (p *peer) Handshake(td *big.Int, head common.Hash, genesis common.Hash) err
 		return errResp(ErrMsgTooLarge, "%v > %v", msg.Size, ProtocolMaxMsgSize)
 	}
 	// Decode the handshake and make sure everything matches
-	var status statusData
 	if err := msg.Decode(&status); err != nil {
 		return errResp(ErrDecode, "msg %v: %v", msg, err)
 	}
 	if status.GenesisBlock != genesis {
 		return errResp(ErrGenesisBlockMismatch, "%x (!= %x)", status.GenesisBlock, genesis)
 	}
-	if int(status.NetworkId) != p.network {
-		return errResp(ErrNetworkIdMismatch, "%d (!= %d)", status.NetworkId, p.network)
+	if int(status.NetworkId) != network {
+		return errResp(ErrNetworkIdMismatch, "%d (!= %d)", status.NetworkId, network)
 	}
 	if int(status.ProtocolVersion) != p.version {
 		return errResp(ErrProtocolVersionMismatch, "%d (!= %d)", status.ProtocolVersion, p.version)
 	}
-	// Configure the remote peer, and sanity check out handshake too
-	p.td, p.head = status.TD, status.CurrentBlock
-	return <-errc
+	return nil
 }
 
 // String implements fmt.Stringer.

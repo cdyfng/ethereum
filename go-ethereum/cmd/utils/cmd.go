@@ -18,32 +18,25 @@
 package utils
 
 import (
-	"bufio"
 	"fmt"
 	"io"
-	"math"
-	"math/big"
 	"os"
 	"os/signal"
 	"regexp"
-	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/eth"
+	"github.com/ethereum/go-ethereum/internal/debug"
 	"github.com/ethereum/go-ethereum/logger"
 	"github.com/ethereum/go-ethereum/logger/glog"
-	"github.com/ethereum/go-ethereum/params"
+	"github.com/ethereum/go-ethereum/node"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/peterh/liner"
 )
 
 const (
 	importBatchSize = 2500
 )
-
-var interruptCallbacks = []func(os.Signal){}
 
 func openLogFile(Datadir string, filename string) *os.File {
 	path := common.AbsolutePath(Datadir, filename)
@@ -52,58 +45,6 @@ func openLogFile(Datadir string, filename string) *os.File {
 		panic(fmt.Sprintf("error opening log file '%s': %v", filename, err))
 	}
 	return file
-}
-
-func PromptConfirm(prompt string) (bool, error) {
-	var (
-		input string
-		err   error
-	)
-	prompt = prompt + " [y/N] "
-
-	// if liner.TerminalSupported() {
-	// 	fmt.Println("term")
-	// 	lr := liner.NewLiner()
-	// 	defer lr.Close()
-	// 	input, err = lr.Prompt(prompt)
-	// } else {
-	fmt.Print(prompt)
-	input, err = bufio.NewReader(os.Stdin).ReadString('\n')
-	fmt.Println()
-	// }
-
-	if len(input) > 0 && strings.ToUpper(input[:1]) == "Y" {
-		return true, nil
-	} else {
-		return false, nil
-	}
-
-	return false, err
-}
-
-func PromptPassword(prompt string, warnTerm bool) (string, error) {
-	if liner.TerminalSupported() {
-		lr := liner.NewLiner()
-		defer lr.Close()
-		return lr.PasswordPrompt(prompt)
-	}
-	if warnTerm {
-		fmt.Println("!! Unsupported terminal, password will be echoed.")
-	}
-	fmt.Print(prompt)
-	input, err := bufio.NewReader(os.Stdin).ReadString('\n')
-	fmt.Println()
-	return input, err
-}
-
-func CheckLegalese(datadir string) {
-	// check "first run"
-	if !common.FileExist(datadir) {
-		r, _ := PromptConfirm(legalese)
-		if !r {
-			Fatalf("Must accept to continue. Shutting down...\n")
-		}
-	}
 }
 
 // Fatalf formats a message to standard error and exits the program.
@@ -121,10 +62,9 @@ func Fatalf(format string, args ...interface{}) {
 	os.Exit(1)
 }
 
-func StartEthereum(ethereum *eth.Ethereum) {
-	glog.V(logger.Info).Infoln("Starting", ethereum.Name())
-	if err := ethereum.Start(); err != nil {
-		Fatalf("Error starting Ethereum: %v", err)
+func StartNode(stack *node.Node) {
+	if err := stack.Start(); err != nil {
+		Fatalf("Error starting protocol stack: %v", err)
 	}
 	go func() {
 		sigc := make(chan os.Signal, 1)
@@ -132,7 +72,7 @@ func StartEthereum(ethereum *eth.Ethereum) {
 		defer signal.Stop(sigc)
 		<-sigc
 		glog.V(logger.Info).Infoln("Got interrupt, shutting down...")
-		go ethereum.Stop()
+		go stack.Stop()
 		logger.Flush()
 		for i := 10; i > 0; i-- {
 			<-sigc
@@ -142,18 +82,8 @@ func StartEthereum(ethereum *eth.Ethereum) {
 			}
 		}
 		glog.V(logger.Error).Infof("Force quitting: this might not end so well.")
-		panic("boom")
+		debug.LoudPanic("boom")
 	}()
-}
-
-func InitOlympic() {
-	params.DurationLimit = big.NewInt(8)
-	params.GenesisGasLimit = big.NewInt(3141592)
-	params.MinGasLimit = big.NewInt(125000)
-	params.MaximumExtraDataSize = big.NewInt(1024)
-	NetworkIdFlag.Value = 0
-	core.BlockReward = big.NewInt(1.5e+18)
-	core.ExpDiffPeriod = big.NewInt(math.MaxInt64)
 }
 
 func FormatTransactionData(data string) []byte {
@@ -169,7 +99,7 @@ func FormatTransactionData(data string) []byte {
 	return d
 }
 
-func ImportChain(chain *core.ChainManager, fn string) error {
+func ImportChain(chain *core.BlockChain, fn string) error {
 	// Watch for Ctrl-C while the import is running.
 	// If a signal is received, the import will stop at the next batch.
 	interrupt := make(chan os.Signal, 1)
@@ -244,7 +174,7 @@ func ImportChain(chain *core.ChainManager, fn string) error {
 	return nil
 }
 
-func hasAllBlocks(chain *core.ChainManager, bs []*types.Block) bool {
+func hasAllBlocks(chain *core.BlockChain, bs []*types.Block) bool {
 	for _, b := range bs {
 		if !chain.HasBlock(b.Hash()) {
 			return false
@@ -253,21 +183,21 @@ func hasAllBlocks(chain *core.ChainManager, bs []*types.Block) bool {
 	return true
 }
 
-func ExportChain(chainmgr *core.ChainManager, fn string) error {
+func ExportChain(blockchain *core.BlockChain, fn string) error {
 	glog.Infoln("Exporting blockchain to", fn)
 	fh, err := os.OpenFile(fn, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.ModePerm)
 	if err != nil {
 		return err
 	}
 	defer fh.Close()
-	if err := chainmgr.Export(fh); err != nil {
+	if err := blockchain.Export(fh); err != nil {
 		return err
 	}
 	glog.Infoln("Exported blockchain to", fn)
 	return nil
 }
 
-func ExportAppendChain(chainmgr *core.ChainManager, fn string, first uint64, last uint64) error {
+func ExportAppendChain(blockchain *core.BlockChain, fn string, first uint64, last uint64) error {
 	glog.Infoln("Exporting blockchain to", fn)
 	// TODO verify mode perms
 	fh, err := os.OpenFile(fn, os.O_CREATE|os.O_APPEND|os.O_WRONLY, os.ModePerm)
@@ -275,7 +205,7 @@ func ExportAppendChain(chainmgr *core.ChainManager, fn string, first uint64, las
 		return err
 	}
 	defer fh.Close()
-	if err := chainmgr.ExportN(fh, first, last); err != nil {
+	if err := blockchain.ExportN(fh, first, last); err != nil {
 		return err
 	}
 	glog.Infoln("Exported blockchain to", fn)
