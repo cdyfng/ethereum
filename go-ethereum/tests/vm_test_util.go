@@ -1,4 +1,4 @@
-// Copyright 2014 The go-ethereum Authors
+// Copyright 2015 The go-ethereum Authors
 // This file is part of the go-ethereum library.
 //
 // The go-ethereum library is free software: you can redistribute it and/or modify
@@ -29,6 +29,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/logger/glog"
+	"github.com/ethereum/go-ethereum/params"
 )
 
 func RunVmTestWithReader(r io.Reader, skipTests []string) error {
@@ -67,11 +68,6 @@ func BenchVmTest(p string, conf bconf, b *testing.B) error {
 		return fmt.Errorf("test not found: %s", conf.name)
 	}
 
-	pJit := vm.EnableJit
-	vm.EnableJit = conf.jit
-	pForceJit := vm.ForceJit
-	vm.ForceJit = conf.precomp
-
 	env := make(map[string]string)
 	env["currentCoinbase"] = test.Env.CurrentCoinbase
 	env["currentDifficulty"] = test.Env.CurrentDifficulty
@@ -99,23 +95,13 @@ func BenchVmTest(p string, conf bconf, b *testing.B) error {
 		benchVmTest(test, env, b)
 	}
 
-	vm.EnableJit = pJit
-	vm.ForceJit = pForceJit
-
 	return nil
 }
 
 func benchVmTest(test VmTest, env map[string]string, b *testing.B) {
 	b.StopTimer()
 	db, _ := ethdb.NewMemDatabase()
-	statedb := state.New(common.Hash{}, db)
-	for addr, account := range test.Pre {
-		obj := StateObjectFromAccount(db, addr, account)
-		statedb.SetStateObject(obj)
-		for a, v := range account.Storage {
-			obj.SetState(common.HexToHash(a), common.HexToHash(v))
-		}
-	}
+	statedb := makePreState(db, test.Pre)
 	b.StartTimer()
 
 	RunVm(statedb, env, test.Exec)
@@ -159,14 +145,7 @@ func runVmTests(tests map[string]VmTest, skipTests []string) error {
 
 func runVmTest(test VmTest) error {
 	db, _ := ethdb.NewMemDatabase()
-	statedb := state.New(common.Hash{}, db)
-	for addr, account := range test.Pre {
-		obj := StateObjectFromAccount(db, addr, account)
-		statedb.SetStateObject(obj)
-		for a, v := range account.Storage {
-			obj.SetState(common.HexToHash(a), common.HexToHash(v))
-		}
-	}
+	statedb := makePreState(db, test.Pre)
 
 	// XXX Yeah, yeah...
 	env := make(map[string]string)
@@ -185,7 +164,7 @@ func runVmTest(test VmTest) error {
 		ret  []byte
 		gas  *big.Int
 		err  error
-		logs state.Logs
+		logs vm.Logs
 	)
 
 	ret, logs, gas, err = RunVm(statedb, env, test.Exec)
@@ -212,11 +191,9 @@ func runVmTest(test VmTest) error {
 		if obj == nil {
 			continue
 		}
-
 		for addr, value := range account.Storage {
-			v := obj.GetState(common.HexToHash(addr))
+			v := statedb.GetState(obj.Address(), common.HexToHash(addr))
 			vexp := common.HexToHash(value)
-
 			if v != vexp {
 				return fmt.Errorf("(%x: %s) storage failed. Expected %x, got %x (%v %v)\n", obj.Address().Bytes()[0:4], addr, vexp, v, vexp.Big(), v.Big())
 			}
@@ -234,7 +211,7 @@ func runVmTest(test VmTest) error {
 	return nil
 }
 
-func RunVm(state *state.StateDB, env, exec map[string]string) ([]byte, state.Logs, *big.Int, error) {
+func RunVm(state *state.StateDB, env, exec map[string]string) ([]byte, vm.Logs, *big.Int, error) {
 	var (
 		to    = common.HexToAddress(exec["address"])
 		from  = common.HexToAddress(exec["caller"])
@@ -248,7 +225,7 @@ func RunVm(state *state.StateDB, env, exec map[string]string) ([]byte, state.Log
 
 	caller := state.GetOrNewStateObject(from)
 
-	vmenv := NewEnvFromMap(state, env, exec)
+	vmenv := NewEnvFromMap(RuleSet{params.MainNetHomesteadBlock, params.MainNetDAOForkBlock, true}, state, env, exec)
 	vmenv.vmTest = true
 	vmenv.skipTransfer = true
 	vmenv.initial = true

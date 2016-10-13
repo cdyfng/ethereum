@@ -24,8 +24,10 @@ import (
 	"runtime"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/logger/glog"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rlp"
 )
 
@@ -43,6 +45,7 @@ type TtTransaction struct {
 }
 
 type TransactionTest struct {
+	Blocknumber string
 	Rlp         string
 	Sender      string
 	Transaction TtTransaction
@@ -102,7 +105,7 @@ func runTransactionTests(tests map[string]TransactionTest, skipTests []string) e
 
 		// test the block
 		if err := runTransactionTest(test); err != nil {
-			return err
+			return fmt.Errorf("%s: %v", name, err)
 		}
 		glog.Infoln("Transaction test passed: ", name)
 
@@ -120,7 +123,7 @@ func runTransactionTest(txTest TransactionTest) (err error) {
 			return nil
 		} else {
 			// RLP decoding failed but is expected to succeed (test FAIL)
-			return fmt.Errorf("RLP decoding failed when expected to succeed: ", err)
+			return fmt.Errorf("RLP decoding failed when expected to succeed: %s", err)
 		}
 	}
 
@@ -142,7 +145,7 @@ func runTransactionTest(txTest TransactionTest) (err error) {
 			return nil
 		} else {
 			// RLP decoding works and validations pass (test FAIL)
-			return fmt.Errorf("Field validations failed after RLP decoding: ", validationError)
+			return fmt.Errorf("Field validations failed after RLP decoding: %s", validationError)
 		}
 	}
 	return errors.New("Should not happen: verify RLP decoding and field validation")
@@ -157,7 +160,16 @@ func verifyTxFields(txTest TransactionTest, decodedTx *types.Transaction) (err e
 		}
 	}()
 
-	decodedSender, err := decodedTx.From()
+	var (
+		decodedSender common.Address
+	)
+
+	chainConfig := &core.ChainConfig{HomesteadBlock: params.MainNetHomesteadBlock}
+	if chainConfig.IsHomestead(common.String2Big(txTest.Blocknumber)) {
+		decodedSender, err = decodedTx.From()
+	} else {
+		decodedSender, err = decodedTx.FromFrontier()
+	}
 	if err != nil {
 		return err
 	}

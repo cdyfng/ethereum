@@ -1,4 +1,4 @@
-// Copyright 2014 The go-ethereum Authors
+// Copyright 2015 The go-ethereum Authors
 // This file is part of the go-ethereum library.
 //
 // The go-ethereum library is free software: you can redistribute it and/or modify
@@ -23,6 +23,7 @@ import (
 	"io"
 	"math/big"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -34,26 +35,26 @@ import (
 	"github.com/ethereum/go-ethereum/logger/glog"
 )
 
-func RunStateTestWithReader(r io.Reader, skipTests []string) error {
+func RunStateTestWithReader(ruleSet RuleSet, r io.Reader, skipTests []string) error {
 	tests := make(map[string]VmTest)
 	if err := readJson(r, &tests); err != nil {
 		return err
 	}
 
-	if err := runStateTests(tests, skipTests); err != nil {
+	if err := runStateTests(ruleSet, tests, skipTests); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func RunStateTest(p string, skipTests []string) error {
+func RunStateTest(ruleSet RuleSet, p string, skipTests []string) error {
 	tests := make(map[string]VmTest)
 	if err := readJsonFile(p, &tests); err != nil {
 		return err
 	}
 
-	if err := runStateTests(tests, skipTests); err != nil {
+	if err := runStateTests(ruleSet, tests, skipTests); err != nil {
 		return err
 	}
 
@@ -61,7 +62,7 @@ func RunStateTest(p string, skipTests []string) error {
 
 }
 
-func BenchStateTest(p string, conf bconf, b *testing.B) error {
+func BenchStateTest(ruleSet RuleSet, p string, conf bconf, b *testing.B) error {
 	tests := make(map[string]VmTest)
 	if err := readJsonFile(p, &tests); err != nil {
 		return err
@@ -70,11 +71,6 @@ func BenchStateTest(p string, conf bconf, b *testing.B) error {
 	if !ok {
 		return fmt.Errorf("test not found: %s", conf.name)
 	}
-
-	pJit := vm.EnableJit
-	vm.EnableJit = conf.jit
-	pForceJit := vm.ForceJit
-	vm.ForceJit = conf.precomp
 
 	// XXX Yeah, yeah...
 	env := make(map[string]string)
@@ -91,64 +87,48 @@ func BenchStateTest(p string, conf bconf, b *testing.B) error {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		benchStateTest(test, env, b)
+		benchStateTest(ruleSet, test, env, b)
 	}
-
-	vm.EnableJit = pJit
-	vm.ForceJit = pForceJit
 
 	return nil
 }
 
-func benchStateTest(test VmTest, env map[string]string, b *testing.B) {
+func benchStateTest(ruleSet RuleSet, test VmTest, env map[string]string, b *testing.B) {
 	b.StopTimer()
 	db, _ := ethdb.NewMemDatabase()
-	statedb := state.New(common.Hash{}, db)
-	for addr, account := range test.Pre {
-		obj := StateObjectFromAccount(db, addr, account)
-		statedb.SetStateObject(obj)
-		for a, v := range account.Storage {
-			obj.SetState(common.HexToHash(a), common.HexToHash(v))
-		}
-	}
+	statedb := makePreState(db, test.Pre)
 	b.StartTimer()
 
-	RunState(statedb, env, test.Exec)
+	RunState(ruleSet, statedb, env, test.Exec)
 }
 
-func runStateTests(tests map[string]VmTest, skipTests []string) error {
+func runStateTests(ruleSet RuleSet, tests map[string]VmTest, skipTests []string) error {
 	skipTest := make(map[string]bool, len(skipTests))
 	for _, name := range skipTests {
 		skipTest[name] = true
 	}
 
 	for name, test := range tests {
-		if skipTest[name] {
+		if skipTest[name] /*|| name != "callcodecallcode_11" */ {
 			glog.Infoln("Skipping state test", name)
-			return nil
+			continue
 		}
 
-		if err := runStateTest(test); err != nil {
+		//fmt.Println("StateTest:", name)
+		if err := runStateTest(ruleSet, test); err != nil {
 			return fmt.Errorf("%s: %s\n", name, err.Error())
 		}
 
-		glog.Infoln("State test passed: ", name)
+		//glog.Infoln("State test passed: ", name)
 		//fmt.Println(string(statedb.Dump()))
 	}
 	return nil
 
 }
 
-func runStateTest(test VmTest) error {
+func runStateTest(ruleSet RuleSet, test VmTest) error {
 	db, _ := ethdb.NewMemDatabase()
-	statedb := state.New(common.Hash{}, db)
-	for addr, account := range test.Pre {
-		obj := StateObjectFromAccount(db, addr, account)
-		statedb.SetStateObject(obj)
-		for a, v := range account.Storage {
-			obj.SetState(common.HexToHash(a), common.HexToHash(v))
-		}
-	}
+	statedb := makePreState(db, test.Pre)
 
 	// XXX Yeah, yeah...
 	env := make(map[string]string)
@@ -167,13 +147,19 @@ func runStateTest(test VmTest) error {
 		ret []byte
 		// gas  *big.Int
 		// err  error
-		logs state.Logs
+		logs vm.Logs
 	)
 
-	ret, logs, _, _ = RunState(statedb, env, test.Transaction)
+	ret, logs, _, _ = RunState(ruleSet, statedb, env, test.Transaction)
 
-	// // Compare expected  and actual return
-	rexp := common.FromHex(test.Out)
+	// Compare expected and actual return
+	var rexp []byte
+	if strings.HasPrefix(test.Out, "#") {
+		n, _ := strconv.Atoi(test.Out[1:])
+		rexp = make([]byte, n)
+	} else {
+		rexp = common.FromHex(test.Out)
+	}
 	if bytes.Compare(rexp, ret) != 0 {
 		return fmt.Errorf("return failed. Expected %x, got %x\n", rexp, ret)
 	}
@@ -182,30 +168,30 @@ func runStateTest(test VmTest) error {
 	for addr, account := range test.Post {
 		obj := statedb.GetStateObject(common.HexToAddress(addr))
 		if obj == nil {
-			continue
+			return fmt.Errorf("did not find expected post-state account: %s", addr)
 		}
 
 		if obj.Balance().Cmp(common.Big(account.Balance)) != 0 {
-			return fmt.Errorf("(%x) balance failed. Expected %v, got %v => %v\n", obj.Address().Bytes()[:4], account.Balance, obj.Balance(), new(big.Int).Sub(common.Big(account.Balance), obj.Balance()))
+			return fmt.Errorf("(%x) balance failed. Expected: %v have: %v\n", obj.Address().Bytes()[:4], common.String2Big(account.Balance), obj.Balance())
 		}
 
 		if obj.Nonce() != common.String2Big(account.Nonce).Uint64() {
-			return fmt.Errorf("(%x) nonce failed. Expected %v, got %v\n", obj.Address().Bytes()[:4], account.Nonce, obj.Nonce())
+			return fmt.Errorf("(%x) nonce failed. Expected: %v have: %v\n", obj.Address().Bytes()[:4], account.Nonce, obj.Nonce())
 		}
 
 		for addr, value := range account.Storage {
-			v := obj.GetState(common.HexToHash(addr))
+			v := statedb.GetState(obj.Address(), common.HexToHash(addr))
 			vexp := common.HexToHash(value)
 
 			if v != vexp {
-				return fmt.Errorf("(%x: %s) storage failed. Expected %x, got %x (%v %v)\n", obj.Address().Bytes()[0:4], addr, vexp, v, vexp.Big(), v.Big())
+				return fmt.Errorf("storage failed:\n%x: %s:\nexpected: %x\nhave:     %x\n(%v %v)\n", obj.Address().Bytes(), addr, vexp, v, vexp.Big(), v.Big())
 			}
 		}
 	}
 
-	statedb.Sync()
-	if common.HexToHash(test.PostStateRoot) != statedb.Root() {
-		return fmt.Errorf("Post state root error. Expected %s, got %x", test.PostStateRoot, statedb.Root())
+	root, _ := statedb.Commit()
+	if common.HexToHash(test.PostStateRoot) != root {
+		return fmt.Errorf("Post state root error. Expected: %s have: %x", test.PostStateRoot, root)
 	}
 
 	// check logs
@@ -218,14 +204,13 @@ func runStateTest(test VmTest) error {
 	return nil
 }
 
-func RunState(statedb *state.StateDB, env, tx map[string]string) ([]byte, state.Logs, *big.Int, error) {
+func RunState(ruleSet RuleSet, statedb *state.StateDB, env, tx map[string]string) ([]byte, vm.Logs, *big.Int, error) {
 	var (
 		data  = common.FromHex(tx["data"])
 		gas   = common.Big(tx["gasLimit"])
 		price = common.Big(tx["gasPrice"])
 		value = common.Big(tx["value"])
 		nonce = common.Big(tx["nonce"]).Uint64()
-		caddr = common.HexToAddress(env["currentCoinbase"])
 	)
 
 	var to *common.Address
@@ -235,21 +220,19 @@ func RunState(statedb *state.StateDB, env, tx map[string]string) ([]byte, state.
 	}
 	// Set pre compiled contracts
 	vm.Precompiled = vm.PrecompiledContracts()
-
-	snapshot := statedb.Copy()
-	coinbase := statedb.GetOrNewStateObject(caddr)
-	coinbase.SetGasLimit(common.Big(env["currentGasLimit"]))
+	snapshot := statedb.Snapshot()
+	gaspool := new(core.GasPool).AddGas(common.Big(env["currentGasLimit"]))
 
 	key, _ := hex.DecodeString(tx["secretKey"])
 	addr := crypto.PubkeyToAddress(crypto.ToECDSA(key).PublicKey)
 	message := NewMessage(addr, to, data, value, gas, price, nonce)
-	vmenv := NewEnvFromMap(statedb, env, tx)
+	vmenv := NewEnvFromMap(ruleSet, statedb, env, tx)
 	vmenv.origin = addr
-	ret, _, err := core.ApplyMessage(vmenv, message, coinbase)
-	if core.IsNonceErr(err) || core.IsInvalidTxErr(err) || state.IsGasLimitErr(err) {
-		statedb.Set(snapshot)
+	ret, _, err := core.ApplyMessage(vmenv, message, gaspool)
+	if core.IsNonceErr(err) || core.IsInvalidTxErr(err) || core.IsGasLimitErr(err) {
+		statedb.RevertToSnapshot(snapshot)
 	}
-	statedb.SyncObjects()
+	statedb.Commit()
 
 	return ret, vmenv.state.Logs(), vmenv.Gas, err
 }

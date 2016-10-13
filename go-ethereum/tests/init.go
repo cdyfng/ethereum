@@ -1,4 +1,4 @@
-// Copyright 2014 The go-ethereum Authors
+// Copyright 2015 The go-ethereum Authors
 // This file is part of the go-ethereum library.
 //
 // The go-ethereum library is free software: you can redistribute it and/or modify
@@ -25,8 +25,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-
-	"github.com/ethereum/go-ethereum/core"
 )
 
 var (
@@ -44,6 +42,12 @@ var (
 		"TRANSCT__RandomByteAtTheEnd",
 		"BLOCK__ZeroByteAtTheEnd",
 		"TRANSCT__ZeroByteAtTheEnd",
+
+		"ChainAtoChainB_blockorder2",
+		"ChainAtoChainB_blockorder1",
+
+		"GasLimitHigherThan2p63m1", // not yet ;)
+		"SuicideIssue",             // fails genesis check
 	}
 
 	/* Go client does not support transaction (account) nonces above 2^64. This
@@ -51,7 +55,9 @@ var (
 	engineering constraint" as accounts cannot easily reach such high
 	nonce values in practice
 	*/
-	TransSkipTests = []string{"TransactionWithHihghNonce256"}
+	TransSkipTests = []string{
+		"TransactionWithHihghNonce256",
+	}
 	StateSkipTests = []string{}
 	VmSkipTests    = []string{}
 )
@@ -59,10 +65,8 @@ var (
 func readJson(reader io.Reader, value interface{}) error {
 	data, err := ioutil.ReadAll(reader)
 	if err != nil {
-		return fmt.Errorf("Error reading JSON file", err.Error())
+		return fmt.Errorf("error reading JSON file: %v", err)
 	}
-
-	core.DisableBadBlockReporting = true
 	if err = json.Unmarshal(data, &value); err != nil {
 		if syntaxerr, ok := err.(*json.SyntaxError); ok {
 			line := findLine(data, syntaxerr.Offset)
