@@ -23,7 +23,7 @@ import (
 	"log"
 	"os"
 
-	"gopl.io/ch8/thumbnail"
+	"github.com/cdyfng/ethereum/goplsource/ch8/thumbnail"
 )
 
 func main() {

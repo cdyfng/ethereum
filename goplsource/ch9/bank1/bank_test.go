@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"testing"
 
-	"gopl.io/ch9/bank1"
+	"github.com/cdyfng/ethereum/goplsource/ch9/bank1"
 )
 
 func TestBank(t *testing.T) {

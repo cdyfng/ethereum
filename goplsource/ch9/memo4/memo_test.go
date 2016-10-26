@@ -6,8 +6,8 @@ package memo_test
 import (
 	"testing"
 
-	"gopl.io/ch9/memo4"
-	"gopl.io/ch9/memotest"
+	"github.com/cdyfng/ethereum/goplsource/ch9/memo4"
+	"github.com/cdyfng/ethereum/goplsource/ch9/memotest"
 )
 
 var httpGetBody = memotest.HTTPGetBody

@@ -14,7 +14,7 @@ import (
 
 //!+
 
-import "gopl.io/ch12/params"
+import "github.com/cdyfng/ethereum/goplsource/ch12/params"
 
 // search implements the /search URL endpoint.
 func search(resp http.ResponseWriter, req *http.Request) {

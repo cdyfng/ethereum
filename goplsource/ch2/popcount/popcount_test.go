@@ -6,7 +6,7 @@ package popcount_test
 import (
 	"testing"
 
-	"gopl.io/ch2/popcount"
+	"github.com/cdyfng/ethereum/goplsource/ch2/popcount"
 )
 
 // -- Alternative implementations --

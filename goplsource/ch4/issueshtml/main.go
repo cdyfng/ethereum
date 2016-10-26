@@ -10,7 +10,7 @@ import (
 	"log"
 	"os"
 
-	"gopl.io/ch4/github"
+	"github.com/cdyfng/ethereum/goplsource/ch4/github"
 )
 
 //!+template

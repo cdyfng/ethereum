@@ -13,7 +13,7 @@ import (
 	"log"
 	"os"
 
-	"gopl.io/ch13/bzip"
+	"github.com/cdyfng/ethereum/goplsource/ch13/bzip"
 )
 
 func main() {

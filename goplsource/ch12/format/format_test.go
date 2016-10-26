@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"gopl.io/ch12/format"
+	"github.com/cdyfng/ethereum/goplsource/ch12/format"
 )
 
 func Test(t *testing.T) {

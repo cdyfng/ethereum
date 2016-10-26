@@ -15,7 +15,7 @@ import (
 )
 
 //!+parseAndCheck
-import "gopl.io/ch7/eval"
+import "github.com/cdyfng/ethereum/goplsource/ch7/eval"
 
 //!-parseAndCheck
 

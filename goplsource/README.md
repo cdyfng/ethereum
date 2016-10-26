@@ -9,7 +9,7 @@ These example programs are licensed under a <a rel="license" href="http://creati
 You can download, build, and run the programs with the following commands:
 
 	$ export GOPATH=$HOME/gobook            # choose workspace directory
-	$ go get gopl.io/ch1/helloworld         # fetch, build, install
+	$ go get github.com/cdyfng/ethereum/goplsource/ch1/helloworld         # fetch, build, install
 	$ $GOPATH/bin/helloworld                # run
 	Hello, 世界
 

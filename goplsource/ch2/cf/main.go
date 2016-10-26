@@ -12,7 +12,7 @@ import (
 	"os"
 	"strconv"
 
-	"gopl.io/ch2/tempconv"
+	"github.com/cdyfng/ethereum/goplsource/ch2/tempconv"
 )
 
 func main() {
