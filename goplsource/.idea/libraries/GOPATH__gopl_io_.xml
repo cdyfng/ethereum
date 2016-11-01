@@ -1,0 +1,32 @@
+<component name="libraryTable">
+  <library name="GOPATH &lt;gopl.io&gt;">
+    <CLASSES>
+      <root url="file://$PROJECT_DIR$/../../../../hello" />
+      <root url="file://$PROJECT_DIR$/../../../../ethereum_0" />
+      <root url="file://$PROJECT_DIR$/../../../../golang.org" />
+      <root url="file://$PROJECT_DIR$/../../../../gopl.io" />
+      <root url="file://$PROJECT_DIR$/../../../../ethereum" />
+      <root url="file://$PROJECT_DIR$/../../../../hi" />
+      <root url="file://$PROJECT_DIR$/../../.." />
+      <root url="file://$PROJECT_DIR$/../../../../temp" />
+      <root url="file://$PROJECT_DIR$/../../../../go-ethereum" />
+      <root url="file://$PROJECT_DIR$/../../../../truffinit" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="file://$PROJECT_DIR$/../../../../hello" />
+      <root url="file://$PROJECT_DIR$/../../../../ethereum_0" />
+      <root url="file://$PROJECT_DIR$/../../../../golang.org" />
+      <root url="file://$PROJECT_DIR$/../../../../gopl.io" />
+      <root url="file://$PROJECT_DIR$/../../../../ethereum" />
+      <root url="file://$PROJECT_DIR$/../../../../hi" />
+      <root url="file://$PROJECT_DIR$/../../.." />
+      <root url="file://$PROJECT_DIR$/../../../../temp" />
+      <root url="file://$PROJECT_DIR$/../../../../go-ethereum" />
+      <root url="file://$PROJECT_DIR$/../../../../truffinit" />
+    </SOURCES>
+    <excluded>
+      <root url="file://$PROJECT_DIR$" />
+    </excluded>
+  </library>
+</component>

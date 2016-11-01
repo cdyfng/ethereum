@@ -6,6 +6,7 @@ package bank_test
 import (
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/cdyfng/ethereum/goplsource/ch9/bank3"
 )
@@ -17,12 +18,14 @@ func TestBank(t *testing.T) {
 		n.Add(1)
 		go func(amount int) {
 			bank.Deposit(amount)
+			time.Sleep(time.Microsecond * 2)
 			n.Done()
 		}(i)
 	}
 	n.Wait()
-
-	if got, want := bank.Balance(), (1000+1)*1000/2; got != want {
+	got, want := bank.Balance(), (1000+1)*1000/2
+	if got != want {
 		t.Errorf("Balance = %d, want %d", got, want)
 	}
+	t.Log("Balance = %d, want %d", got, want)
 }

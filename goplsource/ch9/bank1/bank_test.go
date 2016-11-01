@@ -11,19 +11,20 @@ import (
 )
 
 func TestBank(t *testing.T) {
-	done := make(chan struct{})
+	//done := make(chan struct{})
+	done := make(chan int)
 
 	// Alice
 	go func() {
 		bank.Deposit(200)
 		fmt.Println("=", bank.Balance())
-		done <- struct{}{}
+		done <- 1//struct{}{}
 	}()
 
 	// Bob
 	go func() {
 		bank.Deposit(100)
-		done <- struct{}{}
+		done <- 1//struct{}{}
 	}()
 
 	// Wait for both transactions.

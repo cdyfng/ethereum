@@ -7,23 +7,23 @@
 package bank
 
 //!+
-import "sync"
+//import "sync"
 
 var (
-	mu      sync.Mutex // guards balance
+	//mu      sync.Mutex // guards balance
 	balance int
 )
 
 func Deposit(amount int) {
-	mu.Lock()
+	//mu.Lock()
 	balance = balance + amount
-	mu.Unlock()
+	//mu.Unlock()
 }
 
 func Balance() int {
-	mu.Lock()
+	//mu.Lock()
 	b := balance
-	mu.Unlock()
+	//mu.Unlock()
 	return b
 }
 
