@@ -211,25 +211,23 @@ func runVmTest(test VmTest) error {
 	return nil
 }
 
-func RunVm(state *state.StateDB, env, exec map[string]string) ([]byte, vm.Logs, *big.Int, error) {
+func RunVm(statedb *state.StateDB, env, exec map[string]string) ([]byte, vm.Logs, *big.Int, error) {
+	chainConfig := &params.ChainConfig{
+		HomesteadBlock: params.MainNetHomesteadBlock,
+		DAOForkBlock:   params.MainNetDAOForkBlock,
+		DAOForkSupport: true,
+	}
 	var (
 		to    = common.HexToAddress(exec["address"])
 		from  = common.HexToAddress(exec["caller"])
 		data  = common.FromHex(exec["data"])
 		gas   = common.Big(exec["gas"])
-		price = common.Big(exec["gasPrice"])
 		value = common.Big(exec["value"])
 	)
-	// Reset the pre-compiled contracts for VM tests.
+	caller := statedb.GetOrNewStateObject(from)
 	vm.Precompiled = make(map[string]*vm.PrecompiledAccount)
 
-	caller := state.GetOrNewStateObject(from)
-
-	vmenv := NewEnvFromMap(RuleSet{params.MainNetHomesteadBlock, params.MainNetDAOForkBlock, true, nil}, state, env, exec)
-	vmenv.vmTest = true
-	vmenv.skipTransfer = true
-	vmenv.initial = true
-	ret, err := vmenv.Call(caller, to, data, gas, price, value)
-
-	return ret, vmenv.state.Logs(), vmenv.Gas, err
+	environment, _ := NewEVMEnvironment(true, chainConfig, statedb, env, exec)
+	ret, err := environment.Call(caller, to, data, gas, value)
+	return ret, statedb.Logs(), gas, err
 }

@@ -357,8 +357,6 @@ func TestMethodPack(t *testing.T) {
 	}
 
 	sig := abi.Methods["slice"].Id()
-	sig = append(sig, common.LeftPadBytes([]byte{32}, 32)...)
-	sig = append(sig, common.LeftPadBytes([]byte{2}, 32)...)
 	sig = append(sig, common.LeftPadBytes([]byte{1}, 32)...)
 	sig = append(sig, common.LeftPadBytes([]byte{2}, 32)...)
 
@@ -406,8 +404,6 @@ func TestMethodPack(t *testing.T) {
 	}
 
 	sig = abi.Methods["slice256"].Id()
-	sig = append(sig, common.LeftPadBytes([]byte{32}, 32)...)
-	sig = append(sig, common.LeftPadBytes([]byte{2}, 32)...)
 	sig = append(sig, common.LeftPadBytes([]byte{1}, 32)...)
 	sig = append(sig, common.LeftPadBytes([]byte{2}, 32)...)
 
@@ -756,23 +752,58 @@ func TestDefaultFunctionParsing(t *testing.T) {
 func TestBareEvents(t *testing.T) {
 	const definition = `[
 	{ "type" : "event", "name" : "balance" },
-	{ "type" : "event", "name" : "name" }]`
+	{ "type" : "event", "name" : "anon", "anonymous" : true},
+	{ "type" : "event", "name" : "args", "inputs" : [{ "indexed":false, "name":"arg0", "type":"uint256" }, { "indexed":true, "name":"arg1", "type":"address" }] }
+	]`
+
+	arg0, _ := NewType("uint256")
+	arg1, _ := NewType("address")
+
+	expectedEvents := map[string]struct {
+		Anonymous bool
+		Args      []Argument
+	}{
+		"balance": {false, nil},
+		"anon":    {true, nil},
+		"args": {false, []Argument{
+			Argument{Name: "arg0", Type: arg0, Indexed: false},
+			Argument{Name: "arg1", Type: arg1, Indexed: true},
+		}},
+	}
 
 	abi, err := JSON(strings.NewReader(definition))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if len(abi.Events) != 2 {
-		t.Error("expected 2 events")
+	if len(abi.Events) != len(expectedEvents) {
+		t.Fatalf("invalid number of events after parsing, want %d, got %d", len(expectedEvents), len(abi.Events))
 	}
 
-	if _, ok := abi.Events["balance"]; !ok {
-		t.Error("expected 'balance' event to be present")
-	}
-
-	if _, ok := abi.Events["name"]; !ok {
-		t.Error("expected 'name' event to be present")
+	for name, exp := range expectedEvents {
+		got, ok := abi.Events[name]
+		if !ok {
+			t.Errorf("could not found event %s", name)
+			continue
+		}
+		if got.Anonymous != exp.Anonymous {
+			t.Errorf("invalid anonymous indication for event %s, want %v, got %v", name, exp.Anonymous, got.Anonymous)
+		}
+		if len(got.Inputs) != len(exp.Args) {
+			t.Errorf("invalid number of args, want %d, got %d", len(exp.Args), len(got.Inputs))
+			continue
+		}
+		for i, arg := range exp.Args {
+			if arg.Name != got.Inputs[i].Name {
+				t.Errorf("events[%s].Input[%d] has an invalid name, want %s, got %s", name, i, arg.Name, got.Inputs[i].Name)
+			}
+			if arg.Indexed != got.Inputs[i].Indexed {
+				t.Errorf("events[%s].Input[%d] has an invalid indexed indication, want %v, got %v", name, i, arg.Indexed, got.Inputs[i].Indexed)
+			}
+			if arg.Type.T != got.Inputs[i].Type.T {
+				t.Errorf("events[%s].Input[%d] has an invalid type, want %x, got %x", name, i, arg.Type.T, got.Inputs[i].Type.T)
+			}
+		}
 	}
 }
 
@@ -931,6 +962,7 @@ func TestUnmarshal(t *testing.T) {
 	{ "name" : "bytes", "constant" : false, "outputs": [ { "type": "bytes" } ] },
 	{ "name" : "fixed", "constant" : false, "outputs": [ { "type": "bytes32" } ] },
 	{ "name" : "multi", "constant" : false, "outputs": [ { "type": "bytes" }, { "type": "bytes" } ] },
+	{ "name" : "intArraySingle", "constant" : false, "outputs": [ { "type": "uint256[3]" } ] },
 	{ "name" : "addressSliceSingle", "constant" : false, "outputs": [ { "type": "address[]" } ] },
 	{ "name" : "addressSliceDouble", "constant" : false, "outputs": [ { "name": "a", "type": "address[]" }, { "name": "b", "type": "address[]" } ] },
 	{ "name" : "mixedBytes", "constant" : true, "outputs": [ { "name": "a", "type": "bytes" }, { "name": "b", "type": "bytes32" } ] }]`
@@ -1083,6 +1115,26 @@ func TestUnmarshal(t *testing.T) {
 		t.Errorf("expected %x, got %x", fixed, out[1])
 	}
 
+	buff.Reset()
+	buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000001"))
+	buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000002"))
+	buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000003"))
+	// marshal int array
+	var intArray [3]*big.Int
+	err = abi.Unpack(&intArray, "intArraySingle", buff.Bytes())
+	if err != nil {
+		t.Error(err)
+	}
+	var testAgainstIntArray [3]*big.Int
+	testAgainstIntArray[0] = big.NewInt(1)
+	testAgainstIntArray[1] = big.NewInt(2)
+	testAgainstIntArray[2] = big.NewInt(3)
+
+	for i, Int := range intArray {
+		if Int.Cmp(testAgainstIntArray[i]) != 0 {
+			t.Errorf("expected %v, got %v", testAgainstIntArray[i], Int)
+		}
+	}
 	// marshal address slice
 	buff.Reset()
 	buff.Write(common.Hex2Bytes("0000000000000000000000000000000000000000000000000000000000000020")) // offset
