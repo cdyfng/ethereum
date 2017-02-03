@@ -1,0 +1,37 @@
+<head>
+  <title>cdyDapp</title>
+    <form class="new-task">
+        <input type="text" name="text" placeholder="Type to add new tasks" />
+    </form>
+</head>
+
+<body>
+  <h1>Welcome to Meteor2222!</h1>
+  {{> info}}
+  {{> hello}}
+  <p> -------</p>
+
+<ul>
+      {{#each tasks}}
+      {{> task}}
+      {{/each}}
+  </ul>
+</body>
+<template name="info">
+    <h2>Learn Meteor!</h2>
+    <ul>
+        <li><a href="https://www.meteor.com/try" target="_blank">Do the Tutorial</a></li>
+        <li><a href="http://guide.meteor.com" target="_blank">Follow the Guide</a></li>
+        <li><a href="https://docs.meteor.com" target="_blank">Read the Docs</a></li>
+        <li><a href="https://forums.meteor.com" target="_blank">Discussions</a></li>
+    </ul>
+</template>
+<template name="task">
+    <li>{{text}}</li>
+</template>
+<template name="hello">
+  <button>Click Me2</button>
+  <p>You've pressed the button {{counter}} times.</p>
+</template>
+
+
