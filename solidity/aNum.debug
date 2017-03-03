@@ -1,0 +1,1149 @@
+solidity git:(master) ✗ solc aNum.sol --combined-json bin,abi,srcmap,srcmap-runtime,ast
+{"contracts":{"Contract":{"abi":"[{\"constant\":true,\"inputs\":[],\"name\":\"num\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"type\":\"function\"},{\"inputs\":[{\"name\":\"x\",\"type\":\"uint256\"}],\"type\":\"constructor\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"name\":\"x\",\"type\":\"uint256\"}],\"name\":\"aNum\",\"type\":\"event\"}]\n","bin":"606060405260405160208060d6833981016040528080519060200190919050505b7f8b8d1051eda218f38785a5a406acf5c163b834c57032972980c631c0f493feb9816040518082815260200191505060405180910390a1806000600050819055505b50606780606f6000396000f360606040526000357c0100000000000000000000000000000000000000000000000000000000900480634e70b1dc146039576035565b6002565b3460025760486004805050605e565b6040518082815260200191505060405180910390f35b6000600050548156","srcmap":"25:122:0:-;;;88:57;;;;;;;;;;;;;;;;;;;;;;;120:7;125:1;120:7;;;;;;;;;;;;;;;;;;139:1;133:3;;:7;;;;;88:57;;25:122;;;;;;","srcmap-runtime":"25:122:0:-;;;;;;;;;;;;;;;;;;47:15;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;:::o"}},"sourceList":["aNum.sol"],"sources":{"aNum.sol":{"AST":{"children":[{"attributes":{"literals":["solidity","^","0.4",".0"]},"id":140734283907176,"name":"PragmaDirective","src":"0:23:0"},{"attributes":{"fullyImplemented":true,"isLibrary":false,"linearizedBaseContracts":[140734286006536],"name":"Contract"},"children":[{"attributes":{"name":"num","type":"uint256"},"children":[{"attributes":{"name":"uint"},"id":140734265042968,"name":"ElementaryTypeName","src":"47:4:0"}],"id":140734265043336,"name":"VariableDeclaration","src":"47:15:0"},{"attributes":{"name":"aNum"},"children":[{"children":[{"attributes":{"name":"x","type":"uint256"},"children":[{"attributes":{"name":"uint"},"id":140734265043528,"name":"ElementaryTypeName","src":"77:4:0"}],"id":140734265043656,"name":"VariableDeclaration","src":"77:6:0"}],"id":140734265043800,"name":"ParameterList","src":"76:8:0"}],"id":140734286004360,"name":"EventDefinition","src":"66:19:0"},{"attributes":{"constant":false,"name":"Contract","public":true},"children":[{"children":[{"attributes":{"name":"x","type":"uint256"},"children":[{"attributes":{"name":"uint"},"id":140734286004616,"name":"ElementaryTypeName","src":"106:4:0"}],"id":140734286004744,"name":"VariableDeclaration","src":"106:6:0"}],"id":140734286004904,"name":"ParameterList","src":"105:8:0"},{"children":[],"id":140734286005016,"name":"ParameterList","src":"114:0:0"},{"children":[{"children":[{"attributes":{"type":"tuple()","type_conversion":false},"children":[{"attributes":{"type":"function (uint256) returns ()","value":"aNum"},"id":140734286005160,"name":"Identifier","src":"120:4:0"},{"attributes":{"type":"uint256","value":"x"},"id":140734286005288,"name":"Identifier","src":"125:1:0"}],"id":140734286005368,"name":"FunctionCall","src":"120:7:0"}],"id":140734286005512,"name":"ExpressionStatement","src":"120:7:0"},{"children":[{"attributes":{"operator":"=","type":"uint256"},"children":[{"attributes":{"type":"uint256","value":"num"},"id":140734286005656,"name":"Identifier","src":"133:3:0"},{"attributes":{"type":"uint256","value":"x"},"id":140734286005784,"name":"Identifier","src":"139:1:0"}],"id":140734286005864,"name":"Assignment","src":"133:7:0"}],"id":140734286005976,"name":"ExpressionStatement","src":"133:7:0"}],"id":140734286006104,"name":"Block","src":"114:31:0"}],"id":140734286006248,"name":"FunctionDefinition","src":"88:57:0"}],"id":140734286006536,"name":"ContractDefinition","src":"25:122:0"}],"name":"SourceUnit"}}},"version":"0.4.4+commit.4633f3de.Darwin.appleclang"}
+
+
+
+
+
+
+{
+    "contracts": {
+        "Contract": {
+            "abi": "[{\"constant\":true,\"inputs\":[],\"name\":\"num\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"type\":\"function\"},{\"inputs\":[{\"name\":\"x\",\"type\":\"uint256\"}],\"type\":\"constructor\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"name\":\"x\",\"type\":\"uint256\"}],\"name\":\"aNum\",\"type\":\"event\"}]
+",
+            "bin": "606060405260405160208060d6833981016040528080519060200190919050505b7f8b8d1051eda218f38785a5a406acf5c163b834c57032972980c631c0f493feb9816040518082815260200191505060405180910390a1806000600050819055505b50606780606f6000396000f360606040526000357c0100000000000000000000000000000000000000000000000000000000900480634e70b1dc146039576035565b6002565b3460025760486004805050605e565b6040518082815260200191505060405180910390f35b6000600050548156",
+            "srcmap": "25:122:0:-;;;88:57;;;;;;;;;;;;;;;;;;;;;;;120:7;125:1;120:7;;;;;;;;;;;;;;;;;;139:1;133:3;;:7;;;;;88:57;;25:122;;;;;;",
+            "srcmap-runtime": "25:122:0:-;;;;;;;;;;;;;;;;;;47:15;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;:::o"
+        }
+    },
+    "sourceList": [
+        "aNum.sol"
+    ],
+    "sources": {
+        "aNum.sol": {
+            "AST": {
+                "children": [
+                    {
+                        "attributes": {
+                            "literals": [
+                                "solidity",
+                                "^",
+                                "0.4",
+                                ".0"
+                            ]
+                        },
+                        "id": 140734283907176,
+                        "name": "PragmaDirective",
+                        "src": "0:23:0"
+                    },
+                    {
+                        "attributes": {
+                            "fullyImplemented": true,
+                            "isLibrary": false,
+                            "linearizedBaseContracts": [
+                                140734286006536
+                            ],
+                            "name": "Contract"
+                        },
+                        "children": [
+                            {
+                                "attributes": {
+                                    "name": "num",
+                                    "type": "uint256"
+                                },
+                                "children": [
+                                    {
+                                        "attributes": {
+                                            "name": "uint"
+                                        },
+                                        "id": 140734265042968,
+                                        "name": "ElementaryTypeName",
+                                        "src": "47:4:0"
+                                    }
+                                ],
+                                "id": 140734265043336,
+                                "name": "VariableDeclaration",
+                                "src": "47:15:0"
+                            },
+                            {
+                                "attributes": {
+                                    "name": "aNum"
+                                },
+                                "children": [
+                                    {
+                                        "children": [
+                                            {
+                                                "attributes": {
+                                                    "name": "x",
+                                                    "type": "uint256"
+                                                },
+                                                "children": [
+                                                    {
+                                                        "attributes": {
+                                                            "name": "uint"
+                                                        },
+                                                        "id": 140734265043528,
+                                                        "name": "ElementaryTypeName",
+                                                        "src": "77:4:0"
+                                                    }
+                                                ],
+                                                "id": 140734265043656,
+                                                "name": "VariableDeclaration",
+                                                "src": "77:6:0"
+                                            }
+                                        ],
+                                        "id": 140734265043800,
+                                        "name": "ParameterList",
+                                        "src": "76:8:0"
+                                    }
+                                ],
+                                "id": 140734286004360,
+                                "name": "EventDefinition",
+                                "src": "66:19:0"
+                            },
+                            {
+                                "attributes": {
+                                    "constant": false,
+                                    "name": "Contract",
+                                    "public": true
+                                },
+                                "children": [
+                                    {
+                                        "children": [
+                                            {
+                                                "attributes": {
+                                                    "name": "x",
+                                                    "type": "uint256"
+                                                },
+                                                "children": [
+                                                    {
+                                                        "attributes": {
+                                                            "name": "uint"
+                                                        },
+                                                        "id": 140734286004616,
+                                                        "name": "ElementaryTypeName",
+                                                        "src": "106:4:0"
+                                                    }
+                                                ],
+                                                "id": 140734286004744,
+                                                "name": "VariableDeclaration",
+                                                "src": "106:6:0"
+                                            }
+                                        ],
+                                        "id": 140734286004904,
+                                        "name": "ParameterList",
+                                        "src": "105:8:0"
+                                    },
+                                    {
+                                        "children": [ ],
+                                        "id": 140734286005016,
+                                        "name": "ParameterList",
+                                        "src": "114:0:0"
+                                    },
+                                    {
+                                        "children": [
+                                            {
+                                                "children": [
+                                                    {
+                                                        "attributes": {
+                                                            "type": "tuple()",
+                                                            "type_conversion": false
+                                                        },
+                                                        "children": [
+                                                            {
+                                                                "attributes": {
+                                                                    "type": "function (uint256) returns ()",
+                                                                    "value": "aNum"
+                                                                },
+                                                                "id": 140734286005160,
+                                                                "name": "Identifier",
+                                                                "src": "120:4:0"
+                                                            },
+                                                            {
+                                                                "attributes": {
+                                                                    "type": "uint256",
+                                                                    "value": "x"
+                                                                },
+                                                                "id": 140734286005288,
+                                                                "name": "Identifier",
+                                                                "src": "125:1:0"
+                                                            }
+                                                        ],
+                                                        "id": 140734286005368,
+                                                        "name": "FunctionCall",
+                                                        "src": "120:7:0"
+                                                    }
+                                                ],
+                                                "id": 140734286005512,
+                                                "name": "ExpressionStatement",
+                                                "src": "120:7:0"
+                                            },
+                                            {
+                                                "children": [
+                                                    {
+                                                        "attributes": {
+                                                            "operator": "=",
+                                                            "type": "uint256"
+                                                        },
+                                                        "children": [
+                                                            {
+                                                                "attributes": {
+                                                                    "type": "uint256",
+                                                                    "value": "num"
+                                                                },
+                                                                "id": 140734286005656,
+                                                                "name": "Identifier",
+                                                                "src": "133:3:0"
+                                                            },
+                                                            {
+                                                                "attributes": {
+                                                                    "type": "uint256",
+                                                                    "value": "x"
+                                                                },
+                                                                "id": 140734286005784,
+                                                                "name": "Identifier",
+                                                                "src": "139:1:0"
+                                                            }
+                                                        ],
+                                                        "id": 140734286005864,
+                                                        "name": "Assignment",
+                                                        "src": "133:7:0"
+                                                    }
+                                                ],
+                                                "id": 140734286005976,
+                                                "name": "ExpressionStatement",
+                                                "src": "133:7:0"
+                                            }
+                                        ],
+                                        "id": 140734286006104,
+                                        "name": "Block",
+                                        "src": "114:31:0"
+                                    }
+                                ],
+                                "id": 140734286006248,
+                                "name": "FunctionDefinition",
+                                "src": "88:57:0"
+                            }
+                        ],
+                        "id": 140734286006536,
+                        "name": "ContractDefinition",
+                        "src": "25:122:0"
+                    }
+                ],
+                "name": "SourceUnit"
+            }
+        }
+    },
+    "version": "0.4.4+commit.4633f3de.Darwin.appleclang"
+}
+
+
+{
+    "contracts": {
+        "Contract": {
+            "abi": "[{\"constant\":true,\"inputs\":[],\"name\":\"num\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"type\":\"function\"},{\"inputs\":[{\"name\":\"x\",\"type\":\"uint256\"}],\"type\":\"constructor\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"name\":\"x\",\"type\":\"uint256\"}],\"name\":\"aNum\",\"type\":\"event\"}]
+",
+            "asm": {
+                ".code": [
+                    {
+                        "begin": 25,
+                        "end": 147,
+                        "name": "PUSH",
+                        "value": "60"
+                    },
+                    {
+                        "begin": 25,
+                        "end": 147,
+                        "name": "PUSH",
+                        "value": "40"
+                    },
+                    {
+                        "begin": 25,
+                        "end": 147,
+                        "name": "MSTORE"
+                    },
+                    {
+                        "begin": 88,
+                        "end": 145,
+                        "name": "PUSH",
+                        "value": "40"
+                    },
+                    {
+                        "begin": 88,
+                        "end": 145,
+                        "name": "MLOAD"
+                    },
+                    {
+                        "begin": 88,
+                        "end": 145,
+                        "name": "PUSH",
+                        "value": "20"
+                    },
+                    {
+                        "begin": 88,
+                        "end": 145,
+                        "name": "DUP1"
+                    },
+                    {
+                        "begin": 88,
+                        "end": 145,
+                        "name": "PUSHSIZE"
+                    },
+                    {
+                        "begin": 88,
+                        "end": 145,
+                        "name": "DUP4"
+                    },
+                    {
+                        "begin": 88,
+                        "end": 145,
+                        "name": "CODECOPY"
+                    },
+                    {
+                        "begin": 88,
+                        "end": 145,
+                        "name": "DUP2"
+                    },
+                    {
+                        "begin": 88,
+                        "end": 145,
+                        "name": "ADD"
+                    },
+                    {
+                        "begin": 88,
+                        "end": 145,
+                        "name": "PUSH",
+                        "value": "40"
+                    },
+                    {
+                        "begin": 88,
+                        "end": 145,
+                        "name": "MSTORE"
+                    },
+                    {
+                        "begin": 88,
+                        "end": 145,
+                        "name": "DUP1"
+                    },
+                    {
+                        "begin": 88,
+                        "end": 145,
+                        "name": "DUP1"
+                    },
+                    {
+                        "begin": 88,
+                        "end": 145,
+                        "name": "MLOAD"
+                    },
+                    {
+                        "begin": 88,
+                        "end": 145,
+                        "name": "SWAP1"
+                    },
+                    {
+                        "begin": 88,
+                        "end": 145,
+                        "name": "PUSH",
+                        "value": "20"
+                    },
+                    {
+                        "begin": 88,
+                        "end": 145,
+                        "name": "ADD"
+                    },
+                    {
+                        "begin": 88,
+                        "end": 145,
+                        "name": "SWAP1"
+                    },
+                    {
+                        "begin": 88,
+                        "end": 145,
+                        "name": "SWAP2"
+                    },
+                    {
+                        "begin": 88,
+                        "end": 145,
+                        "name": "SWAP1"
+                    },
+                    {
+                        "begin": 88,
+                        "end": 145,
+                        "name": "POP"
+                    },
+                    {
+                        "begin": 88,
+                        "end": 145,
+                        "name": "POP"
+                    },
+                    {
+                        "begin": 88,
+                        "end": 145,
+                        "name": "tag",
+                        "value": "1"
+                    },
+                    {
+                        "begin": 88,
+                        "end": 145,
+                        "name": "JUMPDEST"
+                    },
+                    {
+                        "begin": 120,
+                        "end": 127,
+                        "name": "PUSH",
+                        "value": "8B8D1051EDA218F38785A5A406ACF5C163B834C57032972980C631C0F493FEB9"
+                    },
+                    {
+                        "begin": 125,
+                        "end": 126,
+                        "name": "DUP2"
+                    },
+                    {
+                        "begin": 120,
+                        "end": 127,
+                        "name": "PUSH",
+                        "value": "40"
+                    },
+                    {
+                        "begin": 120,
+                        "end": 127,
+                        "name": "MLOAD"
+                    },
+                    {
+                        "begin": 120,
+                        "end": 127,
+                        "name": "DUP1"
+                    },
+                    {
+                        "begin": 120,
+                        "end": 127,
+                        "name": "DUP3"
+                    },
+                    {
+                        "begin": 120,
+                        "end": 127,
+                        "name": "DUP2"
+                    },
+                    {
+                        "begin": 120,
+                        "end": 127,
+                        "name": "MSTORE"
+                    },
+                    {
+                        "begin": 120,
+                        "end": 127,
+                        "name": "PUSH",
+                        "value": "20"
+                    },
+                    {
+                        "begin": 120,
+                        "end": 127,
+                        "name": "ADD"
+                    },
+                    {
+                        "begin": 120,
+                        "end": 127,
+                        "name": "SWAP2"
+                    },
+                    {
+                        "begin": 120,
+                        "end": 127,
+                        "name": "POP"
+                    },
+                    {
+                        "begin": 120,
+                        "end": 127,
+                        "name": "POP"
+                    },
+                    {
+                        "begin": 120,
+                        "end": 127,
+                        "name": "PUSH",
+                        "value": "40"
+                    },
+                    {
+                        "begin": 120,
+                        "end": 127,
+                        "name": "MLOAD"
+                    },
+                    {
+                        "begin": 120,
+                        "end": 127,
+                        "name": "DUP1"
+                    },
+                    {
+                        "begin": 120,
+                        "end": 127,
+                        "name": "SWAP2"
+                    },
+                    {
+                        "begin": 120,
+                        "end": 127,
+                        "name": "SUB"
+                    },
+                    {
+                        "begin": 120,
+                        "end": 127,
+                        "name": "SWAP1"
+                    },
+                    {
+                        "begin": 120,
+                        "end": 127,
+                        "name": "LOG1"
+                    },
+                    {
+                        "begin": 139,
+                        "end": 140,
+                        "name": "DUP1"
+                    },
+                    {
+                        "begin": 133,
+                        "end": 136,
+                        "name": "PUSH",
+                        "value": "0"
+                    },
+                    {
+                        "begin": 133,
+                        "end": 136,
+                        "name": "PUSH",
+                        "value": "0"
+                    },
+                    {
+                        "begin": 133,
+                        "end": 140,
+                        "name": "POP"
+                    },
+                    {
+                        "begin": 133,
+                        "end": 140,
+                        "name": "DUP2"
+                    },
+                    {
+                        "begin": 133,
+                        "end": 140,
+                        "name": "SWAP1"
+                    },
+                    {
+                        "begin": 133,
+                        "end": 140,
+                        "name": "SSTORE"
+                    },
+                    {
+                        "begin": 133,
+                        "end": 140,
+                        "name": "POP"
+                    },
+                    {
+                        "begin": 88,
+                        "end": 145,
+                        "name": "tag",
+                        "value": "2"
+                    },
+                    {
+                        "begin": 88,
+                        "end": 145,
+                        "name": "JUMPDEST"
+                    },
+                    {
+                        "begin": 88,
+                        "end": 145,
+                        "name": "POP"
+                    },
+                    {
+                        "begin": 25,
+                        "end": 147,
+                        "name": "PUSH #[$]",
+                        "value": "0000000000000000000000000000000000000000000000000000000000000000"
+                    },
+                    {
+                        "begin": 25,
+                        "end": 147,
+                        "name": "DUP1"
+                    },
+                    {
+                        "begin": 25,
+                        "end": 147,
+                        "name": "PUSH [$]",
+                        "value": "0000000000000000000000000000000000000000000000000000000000000000"
+                    },
+                    {
+                        "begin": 25,
+                        "end": 147,
+                        "name": "PUSH",
+                        "value": "0"
+                    },
+                    {
+                        "begin": 25,
+                        "end": 147,
+                        "name": "CODECOPY"
+                    },
+                    {
+                        "begin": 25,
+                        "end": 147,
+                        "name": "PUSH",
+                        "value": "0"
+                    },
+                    {
+                        "begin": 25,
+                        "end": 147,
+                        "name": "RETURN"
+                    }
+                ],
+                ".data": {
+                    "0": {
+                        ".code": [
+                            {
+                                "begin": 25,
+                                "end": 147,
+                                "name": "PUSH",
+                                "value": "60"
+                            },
+                            {
+                                "begin": 25,
+                                "end": 147,
+                                "name": "PUSH",
+                                "value": "40"
+                            },
+                            {
+                                "begin": 25,
+                                "end": 147,
+                                "name": "MSTORE"
+                            },
+                            {
+                                "begin": 25,
+                                "end": 147,
+                                "name": "PUSH",
+                                "value": "0"
+                            },
+                            {
+                                "begin": 25,
+                                "end": 147,
+                                "name": "CALLDATALOAD"
+                            },
+                            {
+                                "begin": 25,
+                                "end": 147,
+                                "name": "PUSH",
+                                "value": "100000000000000000000000000000000000000000000000000000000"
+                            },
+                            {
+                                "begin": 25,
+                                "end": 147,
+                                "name": "SWAP1"
+                            },
+                            {
+                                "begin": 25,
+                                "end": 147,
+                                "name": "DIV"
+                            },
+                            {
+                                "begin": 25,
+                                "end": 147,
+                                "name": "DUP1"
+                            },
+                            {
+                                "begin": 25,
+                                "end": 147,
+                                "name": "PUSH",
+                                "value": "4E70B1DC"
+                            },
+                            {
+                                "begin": 25,
+                                "end": 147,
+                                "name": "EQ"
+                            },
+                            {
+                                "begin": 25,
+                                "end": 147,
+                                "name": "PUSH [tag]",
+                                "value": "2"
+                            },
+                            {
+                                "begin": 25,
+                                "end": 147,
+                                "name": "JUMPI"
+                            },
+                            {
+                                "begin": 25,
+                                "end": 147,
+                                "name": "PUSH [tag]",
+                                "value": "1"
+                            },
+                            {
+                                "begin": 25,
+                                "end": 147,
+                                "name": "JUMP"
+                            },
+                            {
+                                "begin": 25,
+                                "end": 147,
+                                "name": "tag",
+                                "value": "1"
+                            },
+                            {
+                                "begin": 25,
+                                "end": 147,
+                                "name": "JUMPDEST"
+                            },
+                            {
+                                "begin": 25,
+                                "end": 147,
+                                "name": "PUSH [ErrorTag]"
+                            },
+                            {
+                                "begin": 25,
+                                "end": 147,
+                                "name": "JUMP"
+                            },
+                            {
+                                "begin": 47,
+                                "end": 62,
+                                "name": "tag",
+                                "value": "2"
+                            },
+                            {
+                                "begin": 47,
+                                "end": 62,
+                                "name": "JUMPDEST"
+                            },
+                            {
+                                "begin": 47,
+                                "end": 62,
+                                "name": "CALLVALUE"
+                            },
+                            {
+                                "begin": 47,
+                                "end": 62,
+                                "name": "PUSH [ErrorTag]"
+                            },
+                            {
+                                "begin": 47,
+                                "end": 62,
+                                "name": "JUMPI"
+                            },
+                            {
+                                "begin": 47,
+                                "end": 62,
+                                "name": "PUSH [tag]",
+                                "value": "3"
+                            },
+                            {
+                                "begin": 47,
+                                "end": 62,
+                                "name": "PUSH",
+                                "value": "4"
+                            },
+                            {
+                                "begin": 47,
+                                "end": 62,
+                                "name": "DUP1"
+                            },
+                            {
+                                "begin": 47,
+                                "end": 62,
+                                "name": "POP"
+                            },
+                            {
+                                "begin": 47,
+                                "end": 62,
+                                "name": "POP"
+                            },
+                            {
+                                "begin": 47,
+                                "end": 62,
+                                "name": "PUSH [tag]",
+                                "value": "4"
+                            },
+                            {
+                                "begin": 47,
+                                "end": 62,
+                                "name": "JUMP"
+                            },
+                            {
+                                "begin": 47,
+                                "end": 62,
+                                "name": "tag",
+                                "value": "3"
+                            },
+                            {
+                                "begin": 47,
+                                "end": 62,
+                                "name": "JUMPDEST"
+                            },
+                            {
+                                "begin": 47,
+                                "end": 62,
+                                "name": "PUSH",
+                                "value": "40"
+                            },
+                            {
+                                "begin": 47,
+                                "end": 62,
+                                "name": "MLOAD"
+                            },
+                            {
+                                "begin": 47,
+                                "end": 62,
+                                "name": "DUP1"
+                            },
+                            {
+                                "begin": 47,
+                                "end": 62,
+                                "name": "DUP3"
+                            },
+                            {
+                                "begin": 47,
+                                "end": 62,
+                                "name": "DUP2"
+                            },
+                            {
+                                "begin": 47,
+                                "end": 62,
+                                "name": "MSTORE"
+                            },
+                            {
+                                "begin": 47,
+                                "end": 62,
+                                "name": "PUSH",
+                                "value": "20"
+                            },
+                            {
+                                "begin": 47,
+                                "end": 62,
+                                "name": "ADD"
+                            },
+                            {
+                                "begin": 47,
+                                "end": 62,
+                                "name": "SWAP2"
+                            },
+                            {
+                                "begin": 47,
+                                "end": 62,
+                                "name": "POP"
+                            },
+                            {
+                                "begin": 47,
+                                "end": 62,
+                                "name": "POP"
+                            },
+                            {
+                                "begin": 47,
+                                "end": 62,
+                                "name": "PUSH",
+                                "value": "40"
+                            },
+                            {
+                                "begin": 47,
+                                "end": 62,
+                                "name": "MLOAD"
+                            },
+                            {
+                                "begin": 47,
+                                "end": 62,
+                                "name": "DUP1"
+                            },
+                            {
+                                "begin": 47,
+                                "end": 62,
+                                "name": "SWAP2"
+                            },
+                            {
+                                "begin": 47,
+                                "end": 62,
+                                "name": "SUB"
+                            },
+                            {
+                                "begin": 47,
+                                "end": 62,
+                                "name": "SWAP1"
+                            },
+                            {
+                                "begin": 47,
+                                "end": 62,
+                                "name": "RETURN"
+                            },
+                            {
+                                "begin": 47,
+                                "end": 62,
+                                "name": "tag",
+                                "value": "4"
+                            },
+                            {
+                                "begin": 47,
+                                "end": 62,
+                                "name": "JUMPDEST"
+                            },
+                            {
+                                "begin": 47,
+                                "end": 62,
+                                "name": "PUSH",
+                                "value": "0"
+                            },
+                            {
+                                "begin": 47,
+                                "end": 62,
+                                "name": "PUSH",
+                                "value": "0"
+                            },
+                            {
+                                "begin": 47,
+                                "end": 62,
+                                "name": "POP"
+                            },
+                            {
+                                "begin": 47,
+                                "end": 62,
+                                "name": "SLOAD"
+                            },
+                            {
+                                "begin": 47,
+                                "end": 62,
+                                "name": "DUP2"
+                            },
+                            {
+                                "begin": 47,
+                                "end": 62,
+                                "name": "JUMP",
+                                "value": "[out]"
+                            }
+                        ]
+                    }
+                }
+            },
+            "bin": "606060405260405160208060d6833981016040528080519060200190919050505b7f8b8d1051eda218f38785a5a406acf5c163b834c57032972980c631c0f493feb9816040518082815260200191505060405180910390a1806000600050819055505b50606780606f6000396000f360606040526000357c0100000000000000000000000000000000000000000000000000000000900480634e70b1dc146039576035565b6002565b3460025760486004805050605e565b6040518082815260200191505060405180910390f35b6000600050548156",
+            "bin-runtime": "60606040526000357c0100000000000000000000000000000000000000000000000000000000900480634e70b1dc146039576035565b6002565b3460025760486004805050605e565b6040518082815260200191505060405180910390f35b6000600050548156",
+            "clone-bin": "6060604052604051602080609e833981016040528080519060200190919050505b7f8b8d1051eda218f38785a5a406acf5c163b834c57032972980c631c0f493feb9816040518082815260200191505060405180910390a1806000600050819055505b50602f80606f6000396000f336600080376020600036600073cafecafecafecafecafecafecafecafecafecafe60325a03f41560015760206000f3",
+            "devdoc": "{
+   \"methods\" : {}
+}
+",
+            "opcodes": "PUSH1 0x60 PUSH1 0x40 MSTORE PUSH1 0x40 MLOAD PUSH1 0x20 DUP1 PUSH1 0xD6 DUP4 CODECOPY DUP2 ADD PUSH1 0x40 MSTORE DUP1 DUP1 MLOAD SWAP1 PUSH1 0x20 ADD SWAP1 SWAP2 SWAP1 POP POP JUMPDEST PUSH32 0x8B8D1051EDA218F38785A5A406ACF5C163B834C57032972980C631C0F493FEB9 DUP2 PUSH1 0x40 MLOAD DUP1 DUP3 DUP2 MSTORE PUSH1 0x20 ADD SWAP2 POP POP PUSH1 0x40 MLOAD DUP1 SWAP2 SUB SWAP1 LOG1 DUP1 PUSH1 0x0 PUSH1 0x0 POP DUP2 SWAP1 SSTORE POP JUMPDEST POP PUSH1 0x67 DUP1 PUSH1 0x6F PUSH1 0x0 CODECOPY PUSH1 0x0 RETURN PUSH1 0x60 PUSH1 0x40 MSTORE PUSH1 0x0 CALLDATALOAD PUSH29 0x100000000000000000000000000000000000000000000000000000000 SWAP1 DIV DUP1 PUSH4 0x4E70B1DC EQ PUSH1 0x39 JUMPI PUSH1 0x35 JUMP JUMPDEST PUSH1 0x2 JUMP JUMPDEST CALLVALUE PUSH1 0x2 JUMPI PUSH1 0x48 PUSH1 0x4 DUP1 POP POP PUSH1 0x5E JUMP JUMPDEST PUSH1 0x40 MLOAD DUP1 DUP3 DUP2 MSTORE PUSH1 0x20 ADD SWAP2 POP POP PUSH1 0x40 MLOAD DUP1 SWAP2 SUB SWAP1 RETURN JUMPDEST PUSH1 0x0 PUSH1 0x0 POP SLOAD DUP2 JUMP ",
+            "srcmap": "25:122:0:-;;;88:57;;;;;;;;;;;;;;;;;;;;;;;120:7;125:1;120:7;;;;;;;;;;;;;;;;;;139:1;133:3;;:7;;;;;88:57;;25:122;;;;;;",
+            "srcmap-runtime": "25:122:0:-;;;;;;;;;;;;;;;;;;47:15;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;:::o",
+            "userdoc": "{
+   \"methods\" : {}
+}
+"
+        }
+    },
+    "sourceList": [
+        "aNum.sol"
+    ],
+    "sources": {
+        "aNum.sol": {
+            "AST": {
+                "children": [
+                    {
+                        "attributes": {
+                            "literals": [
+                                "solidity",
+                                "^",
+                                "0.4",
+                                ".0"
+                            ]
+                        },
+                        "id": 140719255756184,
+                        "name": "PragmaDirective",
+                        "src": "0:23:0"
+                    },
+                    {
+                        "attributes": {
+                            "fullyImplemented": true,
+                            "isLibrary": false,
+                            "linearizedBaseContracts": [
+                                140719255757656
+                            ],
+                            "name": "Contract"
+                        },
+                        "children": [
+                            {
+                                "attributes": {
+                                    "name": "num",
+                                    "type": "uint256"
+                                },
+                                "children": [
+                                    {
+                                        "attributes": {
+                                            "name": "uint"
+                                        },
+                                        "id": 140719255756392,
+                                        "name": "ElementaryTypeName",
+                                        "src": "47:4:0"
+                                    }
+                                ],
+                                "id": 140719255756472,
+                                "name": "VariableDeclaration",
+                                "src": "47:15:0"
+                            },
+                            {
+                                "attributes": {
+                                    "name": "aNum"
+                                },
+                                "children": [
+                                    {
+                                        "children": [
+                                            {
+                                                "attributes": {
+                                                    "name": "x",
+                                                    "type": "uint256"
+                                                },
+                                                "children": [
+                                                    {
+                                                        "attributes": {
+                                                            "name": "uint"
+                                                        },
+                                                        "id": 140719255756616,
+                                                        "name": "ElementaryTypeName",
+                                                        "src": "77:4:0"
+                                                    }
+                                                ],
+                                                "id": 140719255756696,
+                                                "name": "VariableDeclaration",
+                                                "src": "77:6:0"
+                                            }
+                                        ],
+                                        "id": 140719255748376,
+                                        "name": "ParameterList",
+                                        "src": "76:8:0"
+                                    }
+                                ],
+                                "id": 140719255751784,
+                                "name": "EventDefinition",
+                                "src": "66:19:0"
+                            },
+                            {
+                                "attributes": {
+                                    "constant": false,
+                                    "name": "Contract",
+                                    "public": true
+                                },
+                                "children": [
+                                    {
+                                        "children": [
+                                            {
+                                                "attributes": {
+                                                    "name": "x",
+                                                    "type": "uint256"
+                                                },
+                                                "children": [
+                                                    {
+                                                        "attributes": {
+                                                            "name": "uint"
+                                                        },
+                                                        "id": 140719255751960,
+                                                        "name": "ElementaryTypeName",
+                                                        "src": "106:4:0"
+                                                    }
+                                                ],
+                                                "id": 140719255752040,
+                                                "name": "VariableDeclaration",
+                                                "src": "106:6:0"
+                                            }
+                                        ],
+                                        "id": 140719255752184,
+                                        "name": "ParameterList",
+                                        "src": "105:8:0"
+                                    },
+                                    {
+                                        "children": [ ],
+                                        "id": 140719255752280,
+                                        "name": "ParameterList",
+                                        "src": "114:0:0"
+                                    },
+                                    {
+                                        "children": [
+                                            {
+                                                "children": [
+                                                    {
+                                                        "attributes": {
+                                                            "type": "tuple()",
+                                                            "type_conversion": false
+                                                        },
+                                                        "children": [
+                                                            {
+                                                                "attributes": {
+                                                                    "type": "function (uint256) returns ()",
+                                                                    "value": "aNum"
+                                                                },
+                                                                "id": 140719255752424,
+                                                                "name": "Identifier",
+                                                                "src": "120:4:0"
+                                                            },
+                                                            {
+                                                                "attributes": {
+                                                                    "type": "uint256",
+                                                                    "value": "x"
+                                                                },
+                                                                "id": 140719255752552,
+                                                                "name": "Identifier",
+                                                                "src": "125:1:0"
+                                                            }
+                                                        ],
+                                                        "id": 140719255752632,
+                                                        "name": "FunctionCall",
+                                                        "src": "120:7:0"
+                                                    }
+                                                ],
+                                                "id": 140719255752776,
+                                                "name": "ExpressionStatement",
+                                                "src": "120:7:0"
+                                            },
+                                            {
+                                                "children": [
+                                                    {
+                                                        "attributes": {
+                                                            "operator": "=",
+                                                            "type": "uint256"
+                                                        },
+                                                        "children": [
+                                                            {
+                                                                "attributes": {
+                                                                    "type": "uint256",
+                                                                    "value": "num"
+                                                                },
+                                                                "id": 140719255752920,
+                                                                "name": "Identifier",
+                                                                "src": "133:3:0"
+                                                            },
+                                                            {
+                                                                "attributes": {
+                                                                    "type": "uint256",
+                                                                    "value": "x"
+                                                                },
+                                                                "id": 140719255753048,
+                                                                "name": "Identifier",
+                                                                "src": "139:1:0"
+                                                            }
+                                                        ],
+                                                        "id": 140719255753128,
+                                                        "name": "Assignment",
+                                                        "src": "133:7:0"
+                                                    }
+                                                ],
+                                                "id": 140719255757128,
+                                                "name": "ExpressionStatement",
+                                                "src": "133:7:0"
+                                            }
+                                        ],
+                                        "id": 140719255757224,
+                                        "name": "Block",
+                                        "src": "114:31:0"
+                                    }
+                                ],
+                                "id": 140719255757368,
+                                "name": "FunctionDefinition",
+                                "src": "88:57:0"
+                            }
+                        ],
+                        "id": 140719255757656,
+                        "name": "ContractDefinition",
+                        "src": "25:122:0"
+                    }
+                ],
+                "name": "SourceUnit"
+            }
+        }
+    },
+    "version": "0.4.4+commit.4633f3de.Darwin.appleclang"
+}
