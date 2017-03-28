@@ -1,0 +1,21 @@
+{
+  "name": "ethdata-extractor",
+  "version": "1.0.0",
+  "description": "extract data from ethereum rpc, save in db",
+  "main": "queue_blocks.js",
+  "scripts": {
+    "test": "test"
+  },
+  "keywords": [
+    "ethereum",
+    "data",
+    "extractor"
+  ],
+  "author": "cdyfng",
+  "license": "ISC",
+  "dependencies": {
+    "pg": "^4.5.1",
+    "web3": "^0.15.3",
+    "winston": "^2.2.0"
+  }
+}
